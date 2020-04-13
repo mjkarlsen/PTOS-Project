@@ -40,6 +40,11 @@ There are many possible complications that can occur after injury and have surgi
 There are two potential studies that could arrise out of this data set. One being focused on lower limb and the other on upper limbs. 
 
 
+## Data Cleansing Process
+* Patient Data
+* Procedure
+
+
 ## Need
 * Data Dictionary
 
@@ -51,7 +56,7 @@ There are two potential studies that could arrise out of this data set. One bein
 
 tic()
 
-raw_data <- fread("PTOS_Data.csv") %>%  
+raw_data <- fread("~/Data/PTOS_Data.csv") %>%  
   as.data.table() %>% 
   clean_names()
 
@@ -91,6 +96,38 @@ pto_df <- raw_data %>%
 ```
 
 
+
+```{r cleansing_func}
+
+
+rotate_clean_df <- function(unq_id, df, which_columns){
+
+
+proc_df <- df %>% 
+  select.(unq_id, starts_with.('proc_')) %>%  
+  pivot_longer.( cols = -unq_id ,
+                 values_to = "values", 
+                 values_drop_na = TRUE) %>% 
+  separate.(name, into = c("type", "serial", "desc"), sep = "_") %>%  
+  arrange.(unq_id) %>% 
+  filter.(desc %in% c('pr', 'da', 'ta')) %>% 
+  mutate.(values = ifelse.(values %in% c("", "<n/a>"), NA, values)) %>%
+  drop_na.()
+  
+procedures_df <- proc_df %>%
+  mutate.(group_id = .GRP,by = id) %>% 
+  mutate.(group_id = group_id%%50) %>% 
+  group_split.(group_id) %>% 
+  map_dfr.(~pivot_wider.(., id_cols = c(id, serial, type), names_from = desc, values_from = values))
+
+}
+toc()
+
+```
+
+
+
+
 ```{r all_the_data}
 
 column_details <- pto_df %>% 
@@ -100,13 +137,13 @@ column_details <- pto_df %>%
   separate.(x, sep = "_", into = c("c1", "c2", "c3", "c4"), remove = FALSE)
 
 
-test_number <- 500000
+column_details %>% view()
+
 
 tic()
 
 proc_df <- pto_df %>% 
   select.(id, starts_with.('proc_')) %>%  
-  # head(test_number) %>%
   pivot_longer.( cols = -id ,
                  values_to = "values", 
                  values_drop_na = TRUE) %>% 
@@ -116,12 +153,10 @@ proc_df <- pto_df %>%
   mutate.(values = ifelse.(values %in% c("", "<n/a>"), NA, values)) %>%
   drop_na.()
   
-
 procedures_df <- proc_df %>%
   mutate.(group_id = .GRP,by = id) %>% 
   mutate.(group_id = group_id%%50) %>% 
   group_split.(group_id) %>% 
-  #future_map_dfr(~pivot_wider.(., id_cols = c(id, serial, type), names_from = desc, values_from = values))
   map_dfr.(~pivot_wider.(., id_cols = c(id, serial, type), names_from = desc, values_from = values))
 
 toc()
@@ -129,6 +164,11 @@ toc()
 proc_df 
 
 procedures_df 
+
+
+write_csv(procedures_df, "~/Data/procedures_info.csv")  
+
+
 
 
 ```
@@ -149,7 +189,7 @@ patient_info <- pto_df %>%
 patient_info %>% 
   filter(id == '0101190119111')
 
-write_csv(patient_info, "patient_info.csv")  
+write_csv(patient_info, "~/Data/patient_info.csv")  
 
 ```
 
