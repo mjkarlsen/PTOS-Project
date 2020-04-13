@@ -1,0 +1,208 @@
+---
+title: "MSDS Capstone Project"
+author: "Matt Carlson"
+date: "4/11/2020"
+---
+
+```{r, setup}
+
+#devtools::install_github("markfairbanks/tidytable")
+
+pacman::p_load( tidyverse, 
+                fpp3, 
+                lubridate, 
+                DataExplorer, 
+                janitor, 
+                broom, 
+                gt, 
+                ggthemes,
+                data.table,
+                tidytable, 
+                tictoc
+                )
+
+options(scipen=999)  #remove scientific notation
+knitr::opts_chunk$set(warning = FALSE)
+knitr::opts_chunk$set(message = FALSE)
+knitr::opts_chunk$set(fig.width = 12)
+knitr::opts_chunk$set(fig.height = 10)
+knitr::opts_chunk$set(echo = FALSE)
+
+```
+
+
+# Pennsylvania Trauma Outcome System
+
+## Overview
+There are many possible complications that can occur after injury and have surgical intervention. One of the major complications that can occur is compartment syndrome. CS typically develops 24-48 hours after surgery causing excessive fluid in the fascia causing pressure and pain in the affected limb. In as little as four hours the muscle can die and cause permanent damage. A treatment of compartment syndrome is a fasciotomy which relieves the pressure and maintains blood flow to the muscle.    
+
+## Objective
+There are two potential studies that could arrise out of this data set. One being focused on lower limb and the other on upper limbs. 
+
+
+## Need
+* Data Dictionary
+
+#Analysis Steps
+* Exploratory Data Analysis
+* Data Manipulation
+
+```{r load_data}
+
+tic()
+
+raw_data <- fread("PTOS_Data.csv") %>%  
+  as.data.table() %>% 
+  clean_names()
+
+toc()
+
+#54.111 sec elapsed
+
+```
+
+## Drop Columns
+Decided to remove any columns that only contain NA or NULL values to assist reducing the size of data. 
+
+```{r drop_columns}
+
+total_observations <- raw_data %>% summarize.(count = n.()) %>% as.integer()
+
+complete_observations <- map_dfc.(raw_data, ~sum(is.na(.))) %>% 
+  rename_with.(~ sub(".x", "", .x)) %>% 
+  pivot_longer.(cols = everything.(), names_to = "column_names", values_to = "missings_obs") %>% 
+  mutate.(total_missing = missings_obs/total_observations)
+
+drop_column_list <- complete_observations %>% 
+  filter.(total_missing >= 1) %>%  #drop columns that have no observations
+  pull.(column_names) 
+
+pto_df <- raw_data %>% 
+  select.(-any_of.(drop_column_list)) %>%
+  rename.(trauma_number = trauma_num, 
+          dob = d_birth_a, 
+          age = age_in_yrs, 
+          injury_dt = inj_date_a, 
+          injury_time = inj_time_a, 
+          zip_code = pat_adr_z) %>% 
+  mutate.(id = paste0(str_remove_all(dob, "/"), zip_code, trauma_number)) %>% 
+  relocate.(id, .before = alias_inst_num)
+
+```
+
+
+```{r all_the_data}
+
+column_details <- pto_df %>% 
+  colnames() %>% 
+  as_tidytable() %>% 
+  arrange.(x) %>% 
+  separate.(x, sep = "_", into = c("c1", "c2", "c3", "c4"), remove = FALSE)
+
+
+test_number <- 500000
+
+tic()
+
+proc_df <- pto_df %>% 
+  select.(id, starts_with.('proc_')) %>%  
+  # head(test_number) %>%
+  pivot_longer.( cols = -id ,
+                 values_to = "values", 
+                 values_drop_na = TRUE) %>% 
+  separate.(name, into = c("type", "serial", "desc"), sep = "_") %>%  
+  arrange.(id) %>% 
+  filter.(desc %in% c('pr', 'da', 'ta')) %>% 
+  mutate.(values = ifelse.(values %in% c("", "<n/a>"), NA, values)) %>%
+  drop_na.()
+  
+
+procedures_df <- proc_df %>%
+  mutate.(group_id = .GRP,by = id) %>% 
+  mutate.(group_id = group_id%%50) %>% 
+  group_split.(group_id) %>% 
+  #future_map_dfr(~pivot_wider.(., id_cols = c(id, serial, type), names_from = desc, values_from = values))
+  map_dfr.(~pivot_wider.(., id_cols = c(id, serial, type), names_from = desc, values_from = values))
+
+toc()
+
+proc_df 
+
+procedures_df 
+
+
+```
+
+
+
+```{r patient_info, paged.print=T}
+
+pto_df %>% colnames()
+
+patient_info <- pto_df %>% 
+  select.(id, trauma_number, sex, dob, age, injury_dt, injury_time, county_pa, zip_code) %>% 
+  mutate(dob = mdy(dob), 
+         injury_dt = mdy(injury_dt), 
+         sex = case.(sex == 1, "M",
+                     sex == 2, "F"))
+  
+patient_info %>% 
+  filter(id == '0101190119111')
+
+write_csv(patient_info, "patient_info.csv")  
+
+```
+
+
+
+# Exploratory Data Analysis
+
+```{r}
+pto_df %>% 
+  head(100) %>% 
+  glimpse()
+
+pto_df %>% DataExplorer::plot_intro()
+
+```
+
+# Data Manipulation & Cleaning
+
+## Consistent NA and NULL Values
+
+```{r clean_null_na}
+
+test_df <- pto_df %>% head(100)
+
+test_df %>% 
+  select.(is.character)
+  mutate_all.(funs(str_replace(., "<NA>", "NA")))
+
+
+```
+
+
+```{r}
+
+pto_df %>% select.(1:10) %>% head(10) %>% view()
+
+```
+
+
+
+
+
+
+```{r}
+
+my_data %>% 
+  select.(alias_inst_num, trauma_num, pat_adr_z, sex, ethnicity, raw_age) %>% 
+  summarize.()
+
+map.(my_data, ~sum(is.na(.)))
+
+
+
+
+```
+
