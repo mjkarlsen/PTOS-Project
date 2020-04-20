@@ -6,7 +6,8 @@ date: "4/11/2020"
 
 ```{r, setup}
 
-#devtools::install_github("markfairbanks/tidytable")
+# devtools::install_github("markfairbanks/tidytable")
+# devtools::install_github("tidyverse/dplyr")
 
 pacman::p_load( tidyverse, 
                 fpp3, 
@@ -29,7 +30,6 @@ knitr::opts_chunk$set(fig.height = 10)
 knitr::opts_chunk$set(echo = FALSE)
 
 ```
-
 
 # Pennsylvania Trauma Outcome System
 
@@ -56,7 +56,7 @@ There are two potential studies that could arrise out of this data set. One bein
 
 tic()
 
-raw_data <- fread("~/Data/PTOS_Data.csv") %>%  
+raw_data <- fread("~/Data/PTOS_Data.csv", na.strings = c("<unk>", "", "<n/a>")) %>%  
   as.data.table() %>% 
   clean_names()
 
@@ -65,6 +65,16 @@ toc()
 #54.111 sec elapsed
 
 ```
+
+```{r helper_functions}
+
+empty_as_na <- function(x){
+    if("factor" %in% class(x)) x <- as.character(x) ## since ifelse wont work with factors
+    ifelse(as.character(x)!="", x, NA)
+}
+
+```
+
 
 ## Drop Columns
 Decided to remove any columns that only contain NA or NULL values to assist reducing the size of data. 
@@ -93,11 +103,36 @@ pto_df <- raw_data %>%
   mutate.(id = paste0(str_remove_all(dob, "/"), zip_code, trauma_number)) %>% 
   relocate.(id, .before = alias_inst_num)
 
+pto_df %>% print()
+
+```
+
+
+```{r example_for_fairbanks}
+
+
+pto_df %>% str()
+pto_df %>% select.(starts_with.("cs")) 
+
 ```
 
 
 
-```{r cleansing_func}
+```{r}
+
+pto_tb <- pto_df %>% as_tibble()
+
+
+pto_tb %>% glimpse()
+  
+
+
+```
+
+
+
+
+```{r cleansing_func, eval=FALSE, include=FALSE}
 
 
 rotate_clean_df <- function(unq_id, df, which_columns){
@@ -124,8 +159,6 @@ procedures_df <- proc_df %>%
 toc()
 
 ```
-
-
 
 
 ```{r all_the_data}
@@ -165,11 +198,7 @@ proc_df
 
 procedures_df 
 
-
 write_csv(procedures_df, "~/Data/procedures_info.csv")  
-
-
-
 
 ```
 
