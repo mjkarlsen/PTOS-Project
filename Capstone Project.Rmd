@@ -19,7 +19,8 @@ pacman::p_load( tidyverse,
                 ggthemes,
                 data.table,
                 tidytable, 
-                tictoc
+                tictoc, 
+                tidystringdist
                 )
 
 options(scipen=999)  #remove scientific notation
@@ -56,25 +57,17 @@ There are two potential studies that could arrise out of this data set. One bein
 
 tic()
 
-raw_data <- fread("~/Data/PTOS_Data.csv", na.strings = c("<unk>", "", "<n/a>")) %>%  
+raw_data <- fread("E:/Northwestern/12 - Capstone/PTOS_Data.csv", na.strings = c("<unk>", "", "<n/a>")) %>%  
   as.data.table() %>% 
   clean_names()
 
 toc()
 
-#54.111 sec elapsed
+#AWS - 54.111 sec elapsed
+#PC - 41.68 sec elapsed
+
 
 ```
-
-```{r helper_functions}
-
-empty_as_na <- function(x){
-    if("factor" %in% class(x)) x <- as.character(x) ## since ifelse wont work with factors
-    ifelse(as.character(x)!="", x, NA)
-}
-
-```
-
 
 ## Drop Columns
 Decided to remove any columns that only contain NA or NULL values to assist reducing the size of data. 
@@ -103,64 +96,15 @@ pto_df <- raw_data %>%
   mutate.(id = paste0(str_remove_all(dob, "/"), zip_code, trauma_number)) %>% 
   relocate.(id, .before = alias_inst_num)
 
-pto_df %>% print()
+# FREE UP MEMORY AND DROP LARGE DATA 
+rm("raw_data") 
+tidytable::inv_gc()
 
 ```
 
 
-```{r example_for_fairbanks}
-
-
-pto_df %>% str()
-pto_df %>% select.(starts_with.("cs")) 
-
-```
-
-
-
-```{r}
-
-pto_tb <- pto_df %>% as_tibble()
-
-
-pto_tb %>% glimpse()
-  
-
-
-```
-
-
-
-
-```{r cleansing_func, eval=FALSE, include=FALSE}
-
-
-rotate_clean_df <- function(unq_id, df, which_columns){
-
-
-proc_df <- df %>% 
-  select.(unq_id, starts_with.('proc_')) %>%  
-  pivot_longer.( cols = -unq_id ,
-                 values_to = "values", 
-                 values_drop_na = TRUE) %>% 
-  separate.(name, into = c("type", "serial", "desc"), sep = "_") %>%  
-  arrange.(unq_id) %>% 
-  filter.(desc %in% c('pr', 'da', 'ta')) %>% 
-  mutate.(values = ifelse.(values %in% c("", "<n/a>"), NA, values)) %>%
-  drop_na.()
-  
-procedures_df <- proc_df %>%
-  mutate.(group_id = .GRP,by = id) %>% 
-  mutate.(group_id = group_id%%50) %>% 
-  group_split.(group_id) %>% 
-  map_dfr.(~pivot_wider.(., id_cols = c(id, serial, type), names_from = desc, values_from = values))
-
-}
-toc()
-
-```
-
-
+## Procedure Results
+* looks like there is an issue with character type
 ```{r all_the_data}
 
 column_details <- pto_df %>% 
@@ -176,19 +120,20 @@ column_details %>% view()
 tic()
 
 proc_df <- pto_df %>% 
-  select.(id, starts_with.('proc_')) %>%  
+  select.(id, starts_with.('proc_')) %>% 
+  select.(id, ends_with.('ta'), ends_with.('pr'), ends_with.('da')) %>%  
   pivot_longer.( cols = -id ,
                  values_to = "values", 
                  values_drop_na = TRUE) %>% 
   separate.(name, into = c("type", "serial", "desc"), sep = "_") %>%  
   arrange.(id) %>% 
-  filter.(desc %in% c('pr', 'da', 'ta')) %>% 
-  mutate.(values = ifelse.(values %in% c("", "<n/a>"), NA, values)) %>%
   drop_na.()
   
-procedures_df <- proc_df %>%
+tidytable::inv_gc()
+
+procedures_df <- proc_df %>% head(100) %>% 
   mutate.(group_id = .GRP,by = id) %>% 
-  mutate.(group_id = group_id%%50) %>% 
+  mutate.(group_id = group_id%%10) %>% 
   group_split.(group_id) %>% 
   map_dfr.(~pivot_wider.(., id_cols = c(id, serial, type), names_from = desc, values_from = values))
 
@@ -201,6 +146,70 @@ procedures_df
 write_csv(procedures_df, "~/Data/procedures_info.csv")  
 
 ```
+
+
+
+
+
+
+```{r column_similarity}
+#https://github.com/ColinFay/tidystringdist
+
+col_name_df <- tidy_comb_all(complete_observations, column_names)
+col_name_similarity <- tidy_stringdist(col_name_df) #, method = c("osa", "lv","jw"))
+
+col_names_grps <- col_name_similarity %>% 
+  select(V1, V2, osa, lv, jw, soundex) %>% 
+  mutate(str_match = str_extract(V2, stringr::str_sub(V1,1,4))) %>% 
+  arrange(V1)
+
+
+```
+
+
+
+
+
+```{r group_like_columns}
+
+set.seed(786)
+
+library(stringdist)
+1 - stringdist('edp05_a_ta','edp05_c_ta',method='jw',p=0.1)
+
+
+a <- lapply(c("foo","bar","baz"),utf8ToInt)
+seq_distmatrix(a)
+
+
+a <- lapply(pto_df %>% colnames(), utf8ToInt)
+b <- lapply(pto_df %>% colnames(), utf8ToInt)
+seq_distmatrix(a, b)
+
+pto_colnames <- pto_df %>% colnames() %>% as.data.table() %>% rename.("column_name" = ".")
+
+pto_colnames
+
+
+d <- stringdistmatrix(pto_df %>% colnames(), method = 'jw', p = 0.25)
+plot(hclust(d))
+
+
+columns_df_sc <- as.data.frame(scale(pto_colnames))
+summary(columns_df_sc)
+
+dist_mat <- dist(pto_colnames, method = 'euclidean')
+hclust_avg <- hclust(dist_mat, method = 'average')
+plot(hclust_avg)
+
+
+stringdist(c('a','b','c'),c('a','c'))
+stringdist(c('a','b','c'),c('a','c'))
+
+```
+
+
+
 
 
 
