@@ -101,8 +101,8 @@ pto_df <- raw_data %>%
   relocate.(id, .before = alias_inst_num)
 
 # FREE UP MEMORY AND DROP LARGE DATA 
-# rm("raw_data") 
-# tidytable::inv_gc()
+rm("raw_data")
+tidytable::inv_gc()
 
 ```
 
@@ -117,39 +117,61 @@ column_details <- pto_df %>%
   arrange.(x) %>% 
   separate.(x, sep = "_", into = c("c1", "c2", "c3", "c4"), remove = FALSE)
 
-
 # column_details %>% view()
 
-
 tic()
-proc_df <- pto_df %>% 
+
+procedure_df <- pto_df %>% 
   select.(id, starts_with.('proc_')) %>% 
-  mutate_across.(is.numeric, as.character) %>% 
-  pivot_longer.( cols = -id ,
-                 values_to = "values", 
-                 values_drop_na = TRUE) %>% 
-  separate.(name, into = c("type", "serial", "desc"), sep = "_") %>%  
-  filter.(desc %in% c("pr", "da", "ta")) %>% 
-  arrange.(id) %>% 
-  drop_na.() %>% 
-  filter.(id == '010118801910420001731')
+  select.(id, ends_with.(c('da', 'pr'))) %>% 
+  #mutate_across.(ends_with.("_da"), lubridate::mdy) %>% 
+  pivot_longer.(cols = -id,
+                values_to = "values", 
+                values_drop_na = TRUE) %>% 
+  separate.(name, into = c("type", "serial", "desc"), sep = "_") %>% 
+  pivot_wider.(., names_from = desc, values_from = values, values_fn = list) %>% 
+  mutate.(date = mdy(da), 
+         proc = as.character(pr)) %>% 
+  select.(id, serial, date, proc)
+
+proc_df %>% 
+  mutate(date = mdy(da), 
+         proc = as.character(pr))
+
+# %>% 
+#   separate.(name, into = c("type", "serial", "desc"), sep = "_") %>%  
+#   filter.(desc %in% c("pr", "da", "ta")) %>% 
+#   arrange.(id) %>% 
+#   drop_na.()  
   
 procedures_df <- proc_df %>%
   mutate.(group_id = .GRP,by = id) %>% 
   mutate.(group_id = group_id%%50) %>% 
   group_split.(group_id) %>% 
-  map_dfr.(~pivot_wider.(., id_cols = c(id, serial, type), names_from = desc, values_from = values))
+  map_dfr.(~pivot_wider.(.x, names_from = desc, values_from = values) %>% 
+         mutate.(da = mdy(da), 
+                 ta = as.character(ta), 
+                 pr = as.character(pr))) %>% 
+  arrange.(id, da, ta)
+
+procedures_df
 
 toc()
+ 
+# proc_df 
 
-proc_df 
-
-procedures_df 
-
-write_csv(procedures_df, "~/Data/procedures_info.csv")  
+# write_csv(procedures_df, "~/Data/procedures_info.csv")  
+write_csv(procedures_df, "E:/Northwestern/12 - Capstone/procedures_info.csv")
 
 ```
 
+```{r}
+
+procedures_df
+
+
+
+```
 
 
 
