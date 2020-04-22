@@ -93,12 +93,21 @@ pto_df <- raw_data %>%
           injury_dt = inj_date_a, 
           injury_time = inj_time_a, 
           zip_code = pat_adr_z) %>% 
-  mutate.(id = paste0(str_remove_all(dob, "/"), zip_code, trauma_number)) %>% 
+  mutate.(dob = ifelse(is.na(dob), as.character(mdy(injury_dt)-years(age)), dob), 
+    id = paste0(str_remove_all(dob, "/"), zip_code, trauma_number)) %>% 
   relocate.(id, .before = alias_inst_num)
 
+pto_df %>% 
+  filter.(age %in% NA) %>% 
+  select.(dob, age, injury_dt) %>% 
+  mutate.(new_age = ifelse(is.na(age) & !is.na(dob), as.integer(interval(mdy(dob), mdy(injury_dt))), F ))
+
+
+as.character(interval(mdy(injury_dt), mdy(dob))), age
+
 # FREE UP MEMORY AND DROP LARGE DATA 
-rm("raw_data") 
-tidytable::inv_gc()
+# rm("raw_data") 
+# tidytable::inv_gc()
 
 ```
 
@@ -114,26 +123,25 @@ column_details <- pto_df %>%
   separate.(x, sep = "_", into = c("c1", "c2", "c3", "c4"), remove = FALSE)
 
 
-column_details %>% view()
+# column_details %>% view()
 
 
 tic()
-
 proc_df <- pto_df %>% 
   select.(id, starts_with.('proc_')) %>% 
-  select.(id, ends_with.('ta'), ends_with.('pr'), ends_with.('da')) %>%  
+  mutate_across.(is.numeric, as.character) %>% 
   pivot_longer.( cols = -id ,
                  values_to = "values", 
                  values_drop_na = TRUE) %>% 
   separate.(name, into = c("type", "serial", "desc"), sep = "_") %>%  
+  filter.(desc %in% c("pr", "da", "ta")) %>% 
   arrange.(id) %>% 
-  drop_na.()
+  drop_na.() %>% 
+  filter.(id == '010118801910420001731')
   
-tidytable::inv_gc()
-
-procedures_df <- proc_df %>% head(100) %>% 
+procedures_df <- proc_df %>%
   mutate.(group_id = .GRP,by = id) %>% 
-  mutate.(group_id = group_id%%10) %>% 
+  mutate.(group_id = group_id%%50) %>% 
   group_split.(group_id) %>% 
   map_dfr.(~pivot_wider.(., id_cols = c(id, serial, type), names_from = desc, values_from = values))
 
