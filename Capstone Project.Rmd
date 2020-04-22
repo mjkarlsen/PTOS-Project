@@ -93,17 +93,12 @@ pto_df <- raw_data %>%
           injury_dt = inj_date_a, 
           injury_time = inj_time_a, 
           zip_code = pat_adr_z) %>% 
-  mutate.(dob = ifelse(is.na(dob), as.character(mdy(injury_dt)-years(age)), dob), 
-    id = paste0(str_remove_all(dob, "/"), zip_code, trauma_number)) %>% 
+  filter.(!is.na(dob) & !is.na(age)) %>% 
+  mutate.(dob = ifelse(is.na(dob), as.character(mdy(injury_dt)-years(age)), dob),
+          age = ifelse(is.na(age) & !is.na(dob),
+                       as.double(round(difftime(mdy(injury_dt), mdy(dob), unit="weeks")/52.25,0)),age),
+          id = paste0(str_remove_all(dob, "/"), trauma_number)) %>% 
   relocate.(id, .before = alias_inst_num)
-
-pto_df %>% 
-  filter.(age %in% NA) %>% 
-  select.(dob, age, injury_dt) %>% 
-  mutate.(new_age = ifelse(is.na(age) & !is.na(dob), as.integer(interval(mdy(dob), mdy(injury_dt))), F ))
-
-
-as.character(interval(mdy(injury_dt), mdy(dob))), age
 
 # FREE UP MEMORY AND DROP LARGE DATA 
 # rm("raw_data") 
