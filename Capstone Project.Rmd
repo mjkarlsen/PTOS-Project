@@ -7,7 +7,7 @@ date: "4/11/2020"
 ```{r, setup}
 
 # devtools::install_github("markfairbanks/tidytable")
-# devtools::install_github("tidyverse/dplyr")
+# devtools::install_github("jackwasey/icd9")
 
 pacman::p_load( tidyverse, 
                 fpp3, 
@@ -62,6 +62,13 @@ raw_data <- fread("E:/Northwestern/12 - Capstone/PTOS_Data.csv", na.strings = c(
   clean_names()
 
 toc()
+
+
+icd_data <- fread("E:/Northwestern/12 - Capstone/ICD9_Data.csv") %>%  
+  as.data.table() %>% 
+  clean_names() %>% 
+  mutate.(proc_code = as.character(proc_code)) %>% 
+  select.(-org_proc_code)
 
 #AWS - 54.111 sec elapsed
 #PC - 41.68 sec elapsed
@@ -121,7 +128,7 @@ column_details <- pto_df %>%
 
 tic()
 
-procedure_df <- pto_df %>% 
+procedures_df <- pto_df %>% 
   select.(id, starts_with.('proc_')) %>% 
   select.(id, ends_with.(c('da', 'pr'))) %>% 
   #mutate_across.(ends_with.("_da"), lubridate::mdy) %>% 
@@ -131,30 +138,12 @@ procedure_df <- pto_df %>%
   separate.(name, into = c("type", "serial", "desc"), sep = "_") %>% 
   pivot_wider.(., names_from = desc, values_from = values, values_fn = list) %>% 
   mutate.(date = mdy(da), 
-         proc = as.character(pr)) %>% 
-  select.(id, serial, date, proc)
+         proc_code = as.character(pr)) %>% 
+  select.(id, serial, date, proc_code)
 
-proc_df %>% 
-  mutate(date = mdy(da), 
-         proc = as.character(pr))
-
-# %>% 
-#   separate.(name, into = c("type", "serial", "desc"), sep = "_") %>%  
-#   filter.(desc %in% c("pr", "da", "ta")) %>% 
-#   arrange.(id) %>% 
-#   drop_na.()  
-  
-procedures_df <- proc_df %>%
-  mutate.(group_id = .GRP,by = id) %>% 
-  mutate.(group_id = group_id%%50) %>% 
-  group_split.(group_id) %>% 
-  map_dfr.(~pivot_wider.(.x, names_from = desc, values_from = values) %>% 
-         mutate.(da = mdy(da), 
-                 ta = as.character(ta), 
-                 pr = as.character(pr))) %>% 
-  arrange.(id, da, ta)
-
-procedures_df
+#ADD IN ICD 9 Descriptions
+procedures_df <- procedures_df %>% 
+  left_join.(icd_data, by = "proc_code")
 
 toc()
  
@@ -167,7 +156,16 @@ write_csv(procedures_df, "E:/Northwestern/12 - Capstone/procedures_info.csv")
 
 ```{r}
 
-procedures_df
+pto_df %>% 
+  filter.(trauma_number == '20031793') %>% 
+  # filter.(dob == '8/2/1998') %>% 
+  select.(id, trauma_number, dob)
+
+
+procedures_df %>% 
+  filter.(id == '0802199820031793') %>% 
+  left_join.(icd_data) %>% view()
+
 
 
 
