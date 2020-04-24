@@ -159,153 +159,262 @@ write_csv(procedures_df, "E:/Northwestern/12 - Capstone/procedures_info.csv")
 
 ```
 
+```{r helper_functions}
+
+gender_func <- function(col) {
+  col_value <-  case.(col == 1, "M",
+                      col == 2, "F",
+                      default = "U")
+  return(col_value)
+}
+
+race_func <- function(col) {
+  col_value <-  case.(col == 1, "White",
+                      col == 2, "Black",
+                      col == 3, "Hispanic", 
+                      col == 4, "Asian", 
+                      col == 5, "Other", 
+                      default = "Unknown")
+  return(col_value)
+}
+
+county_func <- function(col) {
+  col_value <- case.(col == 1 , 'Adams',
+                     col == 2 , 'Allegheny',
+                     col == 3 , 'Armstrong',
+                     col == 4 , 'Beaver',
+                     col == 5 , 'Bedford',
+                     col == 6 , 'Berks',
+                     col == 7 , 'Blair',
+                     col == 8 , 'Bradford',
+                     col == 9 , 'Bucks',
+                     col == 10 , 'Butler',
+                     col == 11 , 'Cambria',
+                     col == 12 , 'Cameron',
+                     col == 13 , 'Carbon',
+                     col == 14 , 'Centre',
+                     col == 15 , 'Chester',
+                     col == 16 , 'Clarion',
+                     col == 17 , 'Clearfield',
+                     col == 18 , 'Clinton',
+                     col == 19 , 'Columbia',
+                     col == 20 , 'Crawford',
+                     col == 21 , 'Cumberland',
+                     col == 22 , 'Dauphin',
+                     col == 23 , 'Delaware',
+                     col == 24 , 'Elk',
+                     col == 25 , 'Erie',
+                     col == 26 , 'Fayette',
+                     col == 27 , 'Forest',
+                     col == 28 , 'Franklin',
+                     col == 29 , 'Fulton',
+                     col == 30 , 'Greene',
+                     col == 31 , 'Huntingdon',
+                     col == 32 , 'Indiana',
+                     col == 33 , 'Jefferson',
+                     col == 34 , 'Juniata',
+                     col == 35 , 'Lackawanna',
+                     col == 36 , 'Lancaster',
+                     col == 37 , 'Lawrence',
+                     col == 38 , 'Lebanon',
+                     col == 39 , 'Lehigh',
+                     col == 40 , 'Luzerne',
+                     col == 41 , 'Lycoming',
+                     col == 42 , 'McKean',
+                     col == 43 , 'Mercer',
+                     col == 44 , 'Mifflin',
+                     col == 45 , 'Monroe',
+                     col == 46 , 'Montgomery',
+                     col == 47 , 'Montour',
+                     col == 48 , 'Northampton',
+                     col == 49 , 'Northumberland',
+                     col == 50 , 'Perry',
+                     col == 51 , 'Philadelphia',
+                     col == 52 , 'Pike',
+                     col == 53 , 'Potter',
+                     col == 54 , 'Schuylkill',
+                     col == 55 , 'Snyder',
+                     col == 56 , 'Somerset',
+                     col == 57 , 'Sullivan',
+                     col == 58 , 'Susquehanna',
+                     col == 59 , 'Tioga',
+                     col == 60 , 'Union',
+                     col == 61 , 'Venango',
+                     col == 62 , 'Warren',
+                     col == 63 , 'Washington',
+                     col == 64 , 'Wayne',
+                     col == 65 , 'Westmoreland',
+                     col == 66 , 'Wyoming',
+                     col == 67 , 'York', 
+                     default = "Unknown")
+  
+  return(col_value)
+}
+
+injury_func <- function(col) {
+  col_value <-  case.(col == 1, "Blunt",
+                      col == 2, "Penetrating",
+                      col == 3, "Burn", 
+                      col == 4, "Skin Disease", 
+                      default = "Unknown")
+  return(col_value)
+}
+
+extricated_func <- function(col) {
+  col_value <-  case.(col == 1, "Yes", 
+                      col == 2, "No", 
+                      default = "Unknown")
+  return(col_value)
+}
+
+transportation_func <- function(col) {
+  col_value <-  case.(col == 1, "Ambulance",
+                      col == 2, "Helicopter",
+                      col == 3, "Ambulance/Helicopter",
+                      col == 4, "Police",
+                      col == 5, "Fire Rescue",
+                      col == 6, "Private Vehicle ",
+                      col == 7, "Walk-In",
+                      col == 8, "NA",
+                      col == 9, "Quick Response Service",
+                      default = "Unknown")
+  return(col_value)
+}
+
+drug_func <- function(col) {
+  col_value <-  case.(col == 0, "Not Tested",
+                      col == 1, "None",
+                      col == 2, "Cocaine",
+                      col == 3, "PCP",
+                      col == 4, "Benzodiazepines",
+                      col == 5, "Barbiturates",
+                      col == 6, "Narcotics",
+                      col == 7, "Amphetamines",
+                      col == 8, "Mariguana",
+                      col == 9, "Tricycloids", 
+                      default = "Unknown")
+  return(col_value)
+}
+
+attending_surgeon_func <- function(col) {
+  col_value <-  case.(col == 1, 'Trauma/General',
+                      col == 2, 'Neurosurgery ',
+                      col == 3, 'Orthopedic',
+                      col == 4, 'Cardiac',
+                      col == 5, 'OBGY',
+                      col == 6, 'Ophthalmic',
+                      col == 7, 'Oral/Maxillofacial',
+                      col == 8, 'Otorhinolaryngologic',
+                      col == 9, 'Pediatric',
+                      col == 10, 'Plastic',
+                      col == 11, 'Thoracic',
+                      col == 12, 'Urologic',
+                      col == 13, 'Burn',
+                      col == 77, 'Other',
+                      default = "Unknown")
+  return(col_value)
+}
+
+eye_resp_func <- function(col) {
+  col_value <-  case.(col == 1, "None",
+                      col == 2, "To Pain",
+                      col == 3, "To Voice",
+                      col == 4, "Spontaneous",
+                      default = "Unknown")
+  return(col_value)
+}
+
+verbal_resp_func <- function(col) {
+  col_value <-  case.(col == 1, "None",
+                      col == 2, "Incomprehensible Sounds",
+                      col == 3, "Inappropriate Words",
+                      col == 4, "Confused",
+                      col == 5, "Oriented", 
+                      default = "Unknown")
+  return(col_value)
+}
+
+motor_resp_func <- function(col) {
+  col_value <-  case.(col == 1, "None",
+                      col == 2, "Extension",
+                      col == 3, "Flexion",
+                      col == 4, "Withdraws",
+                      col == 5, "Localizes pain",
+                      col == 6, "Obeys Command", 
+                      default = "Unknown")
+  return(col_value)
+}
+
+```
+
 
 ```{r patient_data}
 
-patient_df <- pto_df %>% 
-  select.(id, trauma_number, sex, dob, age, injury_dt, injury_time, inj_type, county_pa, zip_code, pay_cat1,
-          pay_cat1_o, pay_cat2_o, weight_lb, weight_kg, temp_f, temp_c, hosp_days, e_code, pulse_a, resp_rat_a,
-          sys_bp_a, discg_to_o, dis_status, race, extric_s, transp_s, drug_r_1, surg_sp, eye_opng_a, ver_resp_a) %>% 
-  rename.(insurance_pay_category = pay_cat1, 
-          insurance_1 = pay_cat1_o, 
-          insurance_2 = pay_cat2_o, 
-          discharge_status = dis_status, 
-          injury_type = inj_type, 
-          patient_extricated = extric_s, 
-          transportion = transp_s, 
-          drug_test = drug_r_1, 
-          attending_surgeon_spec = surg_sp, 
-          eye_opening_resp = eye_opng_a, 
-          verbal_resp = ver_resp_a) %>% 
-  mutate.(dob = mdy(dob), 
-         injury_dt = mdy(injury_dt),
-         e_code = as.character(e_code)) %>% 
-  #CASE STATEMENTS
-  mutate.(sex = case.(sex == 1, "M",
-                     sex == 2, "F"), 
-         race = case.(race == 1, "White",
-                      race == 2, "Black",
-                      race == 3, "Hispanic", 
-                      race == 4, "Asian", 
-                      race == 5, "Other", 
-                      race == 'U', "Unknown" ), 
-         injury_type = case.(injury_type == 1, "Blunt",
-                             injury_type == 2, "Penetrating",
-                             injury_type == 3, "Burn", 
-                             injury_type == 4, "Skin Disease" ),
-         patient_extricated = case.(patient_extricated == 1, "Yes", 
-                                    patient_extricated == 2, "No"), 
-         transportion = case.(transportion == 1, "Ambulance",
-                              transportion == 2, "Helicopter",
-                              transportion == 3, "Ambulance/Helicopter",
-                              transportion == 4, "Police",
-                              transportion == 5, "Fire Rescue",
-                              transportion == 6, "Private Vehicle ",
-                              transportion == 7, "Walk-In",
-                              transportion == 8, "NA",
-                              transportion == 9, "Quick Response Service",
-                              transportion == 'U', "Unknown"), 
-         county_pa = case.(county_pa ==1 , 'Adams',
-                            county_pa ==2 , 'Allegheny',
-                            county_pa ==3 , 'Armstrong',
-                            county_pa ==4 , 'Beaver',
-                            county_pa ==5 , 'Bedford',
-                            county_pa ==6 , 'Berks',
-                            county_pa ==7 , 'Blair',
-                            county_pa ==8 , 'Bradford',
-                            county_pa ==9 , 'Bucks',
-                            county_pa ==10 , 'Butler',
-                            county_pa ==11 , 'Cambria',
-                            county_pa ==12 , 'Cameron',
-                            county_pa ==13 , 'Carbon',
-                            county_pa ==14 , 'Centre',
-                            county_pa ==15 , 'Chester',
-                            county_pa ==16 , 'Clarion',
-                            county_pa ==17 , 'Clearfield',
-                            county_pa ==18 , 'Clinton',
-                            county_pa ==19 , 'Columbia',
-                            county_pa ==20 , 'Crawford',
-                            county_pa ==21 , 'Cumberland',
-                            county_pa ==22 , 'Dauphin',
-                            county_pa ==23 , 'Delaware',
-                            county_pa ==24 , 'Elk',
-                            county_pa ==25 , 'Erie',
-                            county_pa ==26 , 'Fayette',
-                            county_pa ==27 , 'Forest',
-                            county_pa ==28 , 'Franklin',
-                            county_pa ==29 , 'Fulton',
-                            county_pa ==30 , 'Greene',
-                            county_pa ==31 , 'Huntingdon',
-                            county_pa ==32 , 'Indiana',
-                            county_pa ==33 , 'Jefferson',
-                            county_pa ==34 , 'Juniata',
-                            county_pa ==35 , 'Lackawanna',
-                            county_pa ==36 , 'Lancaster',
-                            county_pa ==37 , 'Lawrence',
-                            county_pa ==38 , 'Lebanon',
-                            county_pa ==39 , 'Lehigh',
-                            county_pa ==40 , 'Luzerne',
-                            county_pa ==41 , 'Lycoming',
-                            county_pa ==42 , 'McKean',
-                            county_pa ==43 , 'Mercer',
-                            county_pa ==44 , 'Mifflin',
-                            county_pa ==45 , 'Monroe',
-                            county_pa ==46 , 'Montgomery',
-                            county_pa ==47 , 'Montour',
-                            county_pa ==48 , 'Northampton',
-                            county_pa ==49 , 'Northumberland',
-                            county_pa ==50 , 'Perry',
-                            county_pa ==51 , 'Philadelphia',
-                            county_pa ==52 , 'Pike',
-                            county_pa ==53 , 'Potter',
-                            county_pa ==54 , 'Schuylkill',
-                            county_pa ==55 , 'Snyder',
-                            county_pa ==56 , 'Somerset',
-                            county_pa ==57 , 'Sullivan',
-                            county_pa ==58 , 'Susquehanna',
-                            county_pa ==59 , 'Tioga',
-                            county_pa ==60 , 'Union',
-                            county_pa ==61 , 'Venango',
-                            county_pa ==62 , 'Warren',
-                            county_pa ==63 , 'Washington',
-                            county_pa ==64 , 'Wayne',
-                            county_pa ==65 , 'Westmoreland',
-                            county_pa ==66 , 'Wyoming',
-                            county_pa ==67 , 'York'), 
-         drug_test = case.(drug_test == 0, "Not Tested",
-                           drug_test == 1, "None",
-                           drug_test == 2, "Cocaine",
-                           drug_test == 3, "PCP",
-                           drug_test == 4, "Benzodiazepines",
-                           drug_test == 5, "Barbiturates",
-                           drug_test == 6, "Narcotics",
-                           drug_test == 7, "Amphetamines",
-                           drug_test == 8, "Mariguana",
-                           drug_test == 9, "Tricycloids"), 
-         attending_surgeon_spec = case.(attending_surgeon_spec == 1, 'Trauma/General',
-                                        attending_surgeon_spec == 2, 'Neurosurgery ',
-                                        attending_surgeon_spec == 3, 'Orthopedic',
-                                        attending_surgeon_spec == 4, 'Cardiac',
-                                        attending_surgeon_spec == 5, 'OBGY',
-                                        attending_surgeon_spec == 6, 'Ophthalmic',
-                                        attending_surgeon_spec == 7, 'Oral/Maxillofacial',
-                                        attending_surgeon_spec == 8, 'Otorhinolaryngologic',
-                                        attending_surgeon_spec == 9, 'Pediatric',
-                                        attending_surgeon_spec == 10, 'Plastic',
-                                        attending_surgeon_spec == 11, 'Thoracic',
-                                        attending_surgeon_spec == 12, 'Urologic',
-                                        attending_surgeon_spec == 13, 'Burn',
-                                        attending_surgeon_spec == 77, 'Other'), 
-         eye_opening_resp = case.(eye_opening_resp == 1, "None",
-                             eye_opening_resp == 2, "To Pain",
-                             eye_opening_resp == 3, "To Voice",
-                             eye_opening_resp == 4, "Spontaneous"), 
-         verbal_resp = case.(verbal_resp == 1, "None",
-                             verbal_resp == 2, "Incomprehensible Sounds",
-                             verbal_resp == 3, "Inappropriate Words",
-                             verbal_resp == 4, "Confused",
-                             verbal_resp == 5, "Oriented",))
+source("01 - Classification Functions.R")
 
+patient_df <- pto_df %>%
+  select.(id,
+          trauma_number,
+          sex,
+          dob,
+          age,
+          injury_dt,
+          injury_time,
+          inj_type,
+          county_pa,
+          zip_code,
+          pay_cat1,
+          pay_cat1_o,
+          pay_cat2_o,
+          weight_lb,
+          weight_kg,
+          temp_f,
+          temp_c,
+          hosp_days,
+          e_code,
+          pulse_a,
+          resp_rat_a,
+          sys_bp_a,
+          discg_to_o,
+          dis_status,
+          race,
+          extric_s,
+          transp_s,
+          drug_r_1,
+          surg_sp,
+          eye_opng_a,
+          ver_resp_a,
+          mot_resp_a
+  ) %>%
+  rename.(insurance_pay_category = pay_cat1,
+          insurance_1 = pay_cat1_o,
+          insurance_2 = pay_cat2_o,
+          discharge_status = dis_status,
+          injury_type = inj_type,
+          patient_extricated = extric_s,
+          transportion = transp_s,
+          drug_test = drug_r_1,
+          attending_surgeon_spec = surg_sp,
+          eye_resp = eye_opng_a,
+          verbal_resp = ver_resp_a,
+          motor_resp = mot_resp_a
+  ) %>%
+  mutate.(dob = mdy(dob),
+          injury_dt = mdy(injury_dt),
+          e_code = as.character(e_code),
+          #CASE STATEMENTS USING HELPER FUNCTIONS
+          sex = gender_func(sex),
+          race = race_func(race),
+          injury_type = injury_func(injury_type),
+          patient_extricated = extricated_func(patient_extricated),
+          transportion = transportation_func(transportion),
+          county_pa = county_func(county_pa),
+          drug_test = drug_func(drug_test),
+          attending_surgeon_spec = attending_surgeon_func(attending_surgeon_spec),
+          eye_resp = eye_resp_func(eye_resp),
+          verbal_resp = verbal_resp_func(verbal_resp),
+          motor_resp = motor_resp_func(motor_resp)
+  )
 
 
 patient_df <- patient_df %>% 
