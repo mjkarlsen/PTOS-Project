@@ -188,7 +188,6 @@ verbal_resp_func <- function(col) {
 
 # Assessment of the stimulus necessary to elicit motor response, 
 # assessed within 30 minutes or less of ED/hospital arrival. (pg. 68)
-
 motor_resp_func <- function(col) {
   col_value <-  case.(col == 1, "None",
                       col == 2, "Extension",
@@ -199,3 +198,50 @@ motor_resp_func <- function(col) {
                       default = "Unknown")
   return(col_value)
 }
+
+
+# The categories are based on HC4 standard categories (pg. 101)
+insurance_func <- function(col) {
+  col_value <-  case.(col == 1, "Medicare Indemnity",
+                      col == 2, "Medicare Managed Care",
+                      col == 3, "Medicaid Indemnity",
+                      col == 4, "Medicaid Managed Care",
+                      col == 5, "Commercial Insurer Indemnity",
+                      col == 6, "Commercial Insurer Managed Care", 
+                      col == 7, "Other Third-party", 
+                      col == 8, "Self Pay", 
+                      default = "Unknown")
+  return(col_value)
+}
+
+# Record the status of the patient upon discharge from the hospital submitting this data  (pg. 77)
+discharge_status_func <- function(col) {
+  col_value <-  case.(col == 6, "Patient was dischared alive",
+                      col == 7, "Patient died",
+                      default = "Unknown")
+  return(col_value)
+}
+
+# The destination of the patient on formal discharge (pg. 79)
+discharge_destination_func <- function(col) {
+  col_value <-  case.(col == 1, "Home",
+                      col == 2, "Other Hospital",
+                      col == 4, "Rehabilitation Center",
+                      col == 5, "Skilled Nursing Facility",
+                      col == 6, "Burn Center", 
+                      col == 7, "Psychiatric Facility", 
+                      col == 8, "Legal Authority", 
+                      col == 9, "Drug or Alcohol Rehab ", 
+                      col == 10, "Other Supervised Residential Facility", 
+                      col == 11, "AMA", 
+                      col == 12, "Homeless", 
+                      col == 13, "Transitional Care Unit",
+                      col == 14, "Pennsylvania Trauma Center", 
+                      col == 15, "Out of State Trauma Center", 
+                      col == 16, "Long Term Care Acute Care Center", 
+                      col == 17, "Hospice", 
+                      col == 18, "Foster Care", 
+                      default = "Unknown")
+  return(col_value)
+}
+
