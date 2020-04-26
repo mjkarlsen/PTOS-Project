@@ -31,27 +31,7 @@ knitr::opts_chunk$set(echo = FALSE)
 
 ```
 
-# Pennsylvania Trauma Outcome System
-
-## Overview
-There are many possible complications that can occur after injury and have surgical intervention. One of the major complications that can occur is compartment syndrome. CS typically develops 24-48 hours after surgery causing excessive fluid in the fascia causing pressure and pain in the affected limb. In as little as four hours the muscle can die and cause permanent damage. A treatment of compartment syndrome is a fasciotomy which relieves the pressure and maintains blood flow to the muscle.    
-
-## Objective
-There are two potential studies that could arrise out of this data set. One being focused on lower limb and the other on upper limbs. 
-
-
-## Data Cleansing Process
-* Patient Data
-* Procedure
-
-
-## Need
-* Data Dictionary
-
-#Analysis Steps
-* Exploratory Data Analysis
-* Data Manipulation
-
+## Load Multiple Data Sources
 ```{r load_data}
 
 raw_data <- fread("E:/Northwestern/12 - Capstone/PTOS_Data.csv", na.strings = c("<unk>", "", "<n/a>")) %>%  
@@ -69,6 +49,8 @@ injury_data <- fread("E:/Northwestern/12 - Capstone/ecode_data.csv") %>%
   as.data.table() %>% 
   clean_names() %>% 
   mutate.(e_code = as.character(e_code)) %>% 
+  rename.(injury_desc_short = short_desc, 
+          injury_desc_long = long_desc) %>% 
   select.(-diagnosis_code)
 
 diagnosis_data <- fread("E:/Northwestern/12 - Capstone/diagnosis_data.csv") %>%  
@@ -78,7 +60,6 @@ diagnosis_data <- fread("E:/Northwestern/12 - Capstone/diagnosis_data.csv") %>%
 
 #AWS - 54.111 sec elapsed
 #PC - 41.68 sec elapsed
-
 
 ```
 
@@ -121,10 +102,15 @@ tidytable::inv_gc()
 ```
 
 ## Diagnosis Results
+### Only pull results from Forearm Fractures
 
 ```{r diagnosis_data}
 
-diagnosis_df <- pto_df %>% 
+#RANGE FOR FOREARM FRACTURES
+forearm_fx_list <- paste(seq(from = 813.00, to = 813.99, by = 0.01), collapse = "|")
+
+#NORMALIZE ALL DIAGNOSIS RESULTS BY PATIENT ID
+diagnosis_full_df <- pto_df %>% 
   select.(id, starts_with.('icd9_')) %>% 
   pivot_longer.(cols = -id,
                 values_to = "diag_code", 
@@ -135,15 +121,16 @@ diagnosis_df <- pto_df %>%
   left_join.(diagnosis_data, by = "diag_code") %>% 
   select(id, diag_code, short_desc, long_desc)
 
-fx_list <- paste(seq(from = 812, to = 814, by = 0.01), collapse = "|")
-
-
-diagnosis_df %>% 
+# PUT ALL DIAGNOSIS INTO A SINGLE ROW PER PATIENT ID
+diagnosis_df <- diagnosis_full_df %>% 
   summarize.(diag_codes = paste(diag_code, collapse = " "),
              patient_diagnosis = paste(short_desc, collapse = ", "),
              by = c(id)) %>% 
-  mutate.(fx_frac = str_detect(diag_codes, pattern = fx_list)) %>% 
-  select.(id, fx_frac, diag_codes, patient_diagnosis) 
+  mutate.(forearm_frac = str_detect(diag_codes, pattern = forearm_fx_list)) %>% 
+  select.(id, forearm_frac, diag_codes, patient_diagnosis) 
+
+#ONLY PULL PATIENTS THAT HAVE FOREARM FRACTURE
+fx_patients <- diagnosis_df %>% filter.(forearm_frac == T) %>% select.(id)
 
 
 ```
@@ -169,7 +156,7 @@ procedures_df <- pto_df %>%
   pivot_wider.(., names_from = desc, values_from = values, values_fn = list) %>% 
   mutate.(date = mdy(da), 
           time = as.character(ta),
-          date_time = ymd_hm(paste(date, time)),
+          date_time = ifelse(!is.na(time),ymd_hm(paste(date, time)),ymd_hm(paste(date, "12:00"))),
           proc_code = as.character(pr), 
           loc_code = proc_loc_func(as.character(lc))
           ) %>% 
@@ -179,15 +166,15 @@ procedures_df <- pto_df %>%
 procedures_df <- procedures_df %>% 
   left_join.(icd_data, by = "proc_code")
 
+procedures_df <- procedures_df %>% 
+  inner_join.(fx_patients, by = "id")
+
 # write_csv(procedures_df, "~/Data/procedures_info.csv")  
 write_csv(procedures_df, "E:/Northwestern/12 - Capstone/procedures_info.csv")
 
 ```
 
-
-
-
-
+## Patient Data
 
 ```{r patient_data}
 
@@ -206,17 +193,13 @@ patient_df <- pto_df %>%
           zip_code,
           pay_cat1,
           pay_cat1_o,
-          pay_cat2_o,
-          weight_lb,
           weight_kg,
-          temp_f,
           temp_c,
           hosp_days,
           e_code,
           pulse_a,
           resp_rat_a,
           sys_bp_a,
-          discg_to_o,
           discg_to, 
           dis_status,
           race,
@@ -228,54 +211,130 @@ patient_df <- pto_df %>%
           ver_resp_a,
           mot_resp_a, 
           hgt_fall, 
-          #ref_ar_t_a ,  #time of arrival
-          #eda_time_A
+          ref_ar_t_a ,  #time of arrival
+          ref_ar_d_a,   #date of arrival
+          eda_time_a , 
+          eda_date_a
 
   ) %>%
   rename.(insurance_type = pay_cat1,
           insurance_1 = pay_cat1_o,
-          insurance_2 = pay_cat2_o,
           discharge_status = dis_status,
           discharge_destination = discg_to,
           injury_type = inj_type,
-          patient_extricated = extric_s,
-          transportion = transp_s,
+          transportion_to_tc = transp_s,
           drug_test = drug_r_1,
           attending_surgeon_spec = surg_sp,
-          eye_resp = eye_opng_a,
-          verbal_resp = ver_resp_a,
-          motor_resp = mot_resp_a, 
-          fall_height = hgt_fall
+          injury_patient_extricated = extric_s,
+          injury_fall_height = hgt_fall, 
+          arrival_eye_resp = eye_opng_a,
+          arrival_verbal_resp = ver_resp_a,
+          arrival_motor_resp = mot_resp_a,           
+          arrival_time = ref_ar_t_a, 
+          arrival_dt = ref_ar_d_a,
+          pulse = pulse_a,
+          resp_rate = resp_rat_a,
+          bloodpressure = sys_bp_a,
+          weight_kg = weight_kg,
+          temp_c = temp_c, 
+          emergency_dpt_time = eda_time_a, 
+          emergency_dpt_dt = eda_date_a, 
   ) %>%
   mutate.(dob = mdy(dob),
-          injury_dt = mdy(injury_dt),
           e_code = as.character(e_code),
           #CASE STATEMENTS USING HELPER FUNCTIONS
           sex = gender_func(sex),
           race = race_func(race),
-          injury_type = injury_func(injury_type),
-          patient_extricated = extricated_func(patient_extricated),
-          transportion = transportation_func(transportion),
           county_pa = county_func(county_pa),
+          insurance_type = insurance_func(insurance_type), 
+          # INJURY FUNCTIONS
+          injury_fall_height = fall_height_func(injury_fall_height),
+          injury_type = injury_func(injury_type),
+          injury_patient_extricated = extricated_func(injury_patient_extricated),
+          # ARRIVAL FUNCTIONS
+          arrival_eye_resp = eye_resp_func(arrival_eye_resp),
+          arrival_verbal_resp = verbal_resp_func(arrival_verbal_resp),
+          arrival_motor_resp = motor_resp_func(arrival_motor_resp),
+          # CLEAN UP ARRIVAL TIMES IF PATIENT WENT DIRECTLY TO ER
+          arrival_time = ifelse(is.na(arrival_time), emergency_dpt_time, arrival_time),
+          arrival_dt = ifelse(is.na(arrival_dt), emergency_dpt_dt, arrival_dt),
+          transportion_to_tc = transportation_func(transportion_to_tc),
           drug_test = drug_func(drug_test),
           attending_surgeon_spec = attending_surgeon_func(attending_surgeon_spec),
-          eye_resp = eye_resp_func(eye_resp),
-          verbal_resp = verbal_resp_func(verbal_resp),
-          motor_resp = motor_resp_func(motor_resp), 
-          insurance_type = insurance_func(insurance_type), 
+          #DISCHARGE FUNCTIONS
           discharge_status = discharge_status_func(discharge_status), 
           discharge_destination = discharge_destination_func(discharge_destination), 
-          age_range = age_range_func(age), 
-          fall_height = fall_height_func(fall_height)
-  )
+  ) %>% 
+  mutate_across.(ends_with.("_dt"), mdy)
 
 patient_df <- patient_df %>% 
   left_join.(injury_data, by = c("e_code"))
+
+patient_df <- patient_df %>% 
+  left_join.(diagnosis_df, by = "id")
+
+patient_df <- patient_df %>% 
+  inner_join.(fx_patients, by = "id") %>% 
+  select(id,
+         trauma_number,
+         sex,
+         race,
+         dob,
+         age,
+         forearm_frac,
+         weight_kg, 
+         temp_c,
+         pulse, 
+         resp_rate, 
+         bloodpressure,
+         county_pa,
+         zip_code,
+         insurance_type,
+         injury_dt,
+         injury_time,
+         injury_type, 
+         injury_desc_short, 
+         injury_desc_long,
+         injury_fall_height,
+         injury_patient_extricated,
+         transportion_to_tc,
+         attending_surgeon_spec,
+         arrival_dt, 
+         arrival_time,
+         arrival_eye_resp, 
+         arrival_verbal_resp, 
+         arrival_motor_resp,
+         emergency_dpt_dt,
+         emergency_dpt_time,
+         diag_codes, 
+         patient_diagnosis, 
+         discharge_status, 
+         discharge_destination
+  )
 
 # write_csv(procedures_df, "~/Data/procedures_info.csv")  
 write_csv(patient_df, "E:/Northwestern/12 - Capstone/patient_info.csv")
 
 ```
+
+
+```{r data_for_analysis}
+
+
+patient_df %>% view()
+
+
+```
+
+
+
+
+
+
+
+
+
+
 
 
 ```{r complication_data}
