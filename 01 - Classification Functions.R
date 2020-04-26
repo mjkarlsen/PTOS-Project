@@ -245,3 +245,64 @@ discharge_destination_func <- function(col) {
   return(col_value)
 }
 
+
+# Custom age ranges
+age_range_func <- function(col) {
+  col_value <-  case.(col < 100, "90-100 yrs", 
+                      col < 90, "80-90 yrs", 
+                      col < 80, "70-80 yrs", 
+                      col < 70, "60-70 yrs", 
+                      col < 60, "50-60 yrs", 
+                      col < 50, "40-50 yrs", 
+                      col < 40, "30-40 yrs", 
+                      col < 30, "20-30 yrs", 
+                      col < 20, "15-20 yrs", 
+                      col < 15, "10-15 yrs", 
+                      col < 10, "5-10 yrs",
+                      col < 5, "2-5 yrs",
+                      col < 2, "1-2 years",
+                      col < 1, "0-1 years",
+                      col >= 100, "100+ yrs",
+                      default = "Unknown")
+  return(col_value)
+}
+
+# Custom age ranges
+fall_height_func <- function(col) {
+  col_value <-  case.(col = 0, "Fall on same level",  
+                      col = 1, "Less than or equal to 1 ft", 
+                      col = 2, "2 to 5 ft", 
+                      col = 3, "6 to 10 ft", 
+                      col = 4, "11 to 20 ft", 
+                      col = 5, "21 to 30 ft", 
+                      col = 6, "Greater than 30 ft", 
+                      col = 'I', "Inappropriate - patient did not fall", 
+                      col = 'U', "Unknown - no distance can be estimated", 
+                      default = "Unknown")
+  return(col_value)
+}
+
+# Location of procedure
+proc_loc_func <- function(col) {
+  col_value <-  case.(col == 1, "ED",
+                      col == 2, "OR",
+                      col == 3, "ICU",
+                      col == 4, "Med/Surg Floor",
+                      col == 5, "Step-down Unit", 
+                      col == 6, "Radiology", 
+                      col == 7, "Neclear Medicine", 
+                      col == 8, "Burn Unit", 
+                      col == 9, "PMR", 
+                      col == 10, "Minor Surgery Unit", 
+                      col == 13, "PACU", 
+                      col == 14, "Postmortem" , 
+                      col == 15, "EMS", 
+                      col == 16, "Referring Facility", 
+                      col == 17, "Special Procedure Unit",
+                      col == 18, "Angoigraphy", 
+                      default = "Unknown")
+  return(col_value)
+}
+
+
+
