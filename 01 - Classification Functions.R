@@ -269,15 +269,15 @@ age_range_func <- function(col) {
 
 # Custom age ranges
 fall_height_func <- function(col) {
-  col_value <-  case.(col = 0, "Fall on same level",  
-                      col = 1, "Less than or equal to 1 ft", 
-                      col = 2, "2 to 5 ft", 
-                      col = 3, "6 to 10 ft", 
-                      col = 4, "11 to 20 ft", 
-                      col = 5, "21 to 30 ft", 
-                      col = 6, "Greater than 30 ft", 
-                      col = 'I', "Inappropriate - patient did not fall", 
-                      col = 'U', "Unknown - no distance can be estimated", 
+  col_value <-  case.(col == 0, "Fall on same level",  
+                      col == 1, "Less than or equal to 1 ft", 
+                      col == 2, "2 to 5 ft", 
+                      col == 3, "6 to 10 ft", 
+                      col == 4, "11 to 20 ft", 
+                      col == 5, "21 to 30 ft", 
+                      col == 6, "Greater than 30 ft", 
+                      col == 'I', "Inappropriate - patient did not fall", 
+                      col == 'U', "Unknown - no distance can be estimated", 
                       default = "Unknown")
   return(col_value)
 }

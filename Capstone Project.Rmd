@@ -71,6 +71,11 @@ injury_data <- fread("E:/Northwestern/12 - Capstone/ecode_data.csv") %>%
   mutate.(e_code = as.character(e_code)) %>% 
   select.(-diagnosis_code)
 
+diagnosis_data <- fread("E:/Northwestern/12 - Capstone/diagnosis_data.csv") %>%  
+  as.data.table() %>% 
+  clean_names() %>% 
+  mutate.(diag_code = as.double(diag_code))
+
 #AWS - 54.111 sec elapsed
 #PC - 41.68 sec elapsed
 
@@ -115,16 +120,40 @@ tidytable::inv_gc()
 
 ```
 
+## Diagnosis Results
+
+```{r diagnosis_data}
+
+diagnosis_df <- pto_df %>% 
+  select.(id, starts_with.('icd9_')) %>% 
+  pivot_longer.(cols = -id,
+                values_to = "diag_code", 
+                values_drop_na = TRUE
+                ) %>% 
+  separate.(name, into = c("type", "serial"), sep = "_") %>% 
+  mutate.(diag_code = as.double(diag_code)) %>% 
+  left_join.(diagnosis_data, by = "diag_code") %>% 
+  select(id, diag_code, short_desc, long_desc)
+
+fx_list <- paste(seq(from = 812, to = 814, by = 0.01), collapse = "|")
+
+
+diagnosis_df %>% 
+  summarize.(diag_codes = paste(diag_code, collapse = " "),
+             patient_diagnosis = paste(short_desc, collapse = ", "),
+             by = c(id)) %>% 
+  mutate.(fx_frac = str_detect(diag_codes, pattern = fx_list)) %>% 
+  select.(id, fx_frac, diag_codes, patient_diagnosis) 
+
+
+```
+
 
 ## Procedure Results
-* looks like there is an issue with character type
-```{r all_the_data}
 
-column_details <- pto_df %>% 
-  colnames() %>% 
-  as_tidytable() %>% 
-  arrange.(x) %>% 
-  separate.(x, sep = "_", into = c("c1", "c2", "c3", "c4"), remove = FALSE)
+```{r procedures_data}
+
+source("01 - Classification Functions.R")
 
 procedures_df <- pto_df %>% 
   select.(id, starts_with.('proc_')) %>% 
@@ -155,14 +184,8 @@ write_csv(procedures_df, "E:/Northwestern/12 - Capstone/procedures_info.csv")
 
 ```
 
-```{r}
-pto_df %>% 
-  select.(id, trauma_number,  starts_with.('proc_')) %>% 
-  filter.(trauma_number == '20031793'), 
-## location of the procedure
-## 32 complication is considered missed compartment syndrome
 
-```
+
 
 
 
@@ -242,7 +265,8 @@ patient_df <- pto_df %>%
           insurance_type = insurance_func(insurance_type), 
           discharge_status = discharge_status_func(discharge_status), 
           discharge_destination = discharge_destination_func(discharge_destination), 
-          age_range = age_range_func(age)
+          age_range = age_range_func(age), 
+          fall_height = fall_height_func(fall_height)
   )
 
 patient_df <- patient_df %>% 
