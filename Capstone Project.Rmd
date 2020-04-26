@@ -310,6 +310,8 @@ patient_df <- patient_df %>%
          patient_diagnosis, 
          discharge_status, 
          discharge_destination
+         # Add in time calculations from arrival to first operative treatment
+         # Emergency to first operative fracture treatment
   )
 
 # write_csv(procedures_df, "~/Data/procedures_info.csv")  
@@ -321,7 +323,7 @@ write_csv(patient_df, "E:/Northwestern/12 - Capstone/patient_info.csv")
 ```{r data_for_analysis}
 
 
-patient_df %>% view()
+patient_df %>% create_report()
 
 
 ```
