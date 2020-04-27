@@ -41,9 +41,9 @@ raw_data <- fread("E:/Northwestern/12 - Capstone/PTOS_Data.csv", na.strings = c(
 icd_data <- fread("E:/Northwestern/12 - Capstone/ICD9_Data.csv") %>%  
   as.data.table() %>% 
   clean_names() %>% 
-  mutate.(proc_code = as.character(proc_code)) %>% 
+  mutate.(proc_code = as.double(proc_code)) %>% 
+  rename.(procedure_desc = long_desc) %>% 
   select.(-org_proc_code)
-
 
 injury_data <- fread("E:/Northwestern/12 - Capstone/ecode_data.csv") %>%  
   as.data.table() %>% 
@@ -122,15 +122,15 @@ diagnosis_full_df <- pto_df %>%
   select(id, diag_code, short_desc, long_desc)
 
 # PUT ALL DIAGNOSIS INTO A SINGLE ROW PER PATIENT ID
-diagnosis_df <- diagnosis_full_df %>% 
+diagnosis_flat_df <- diagnosis_full_df %>% 
   summarize.(diagnosis_codes = paste(diag_code, collapse = " "),
              diagnosis_desc = paste(short_desc, collapse = ", "),
              by = c(id)) %>% 
   mutate.(diagnosis_forearm_fx = str_detect(diagnosis_codes, pattern = forearm_fx_list)) %>% 
-  select.(id, forearm_frac, diagnosis_codes, diagnosis_desc) 
+  select.(id, diagnosis_forearm_fx, diagnosis_codes, diagnosis_desc) 
 
 #ONLY PULL PATIENTS THAT HAVE FOREARM FRACTURE
-fx_patients <- diagnosis_df %>% filter.(diagnosis_forearm_fx == T) %>% select.(id)
+fx_patients <- diagnosis_flat_df %>% filter.(diagnosis_forearm_fx == T) %>% select.(id)
 
 
 ```
@@ -141,7 +141,6 @@ fx_patients <- diagnosis_df %>% filter.(diagnosis_forearm_fx == T) %>% select.(i
 
 ```{r complications_data}
 
-
 source("01 - Classification Functions.R")
 
 #NORMALIZE ALL DIAGNOSIS RESULTS BY PATIENT ID
@@ -151,7 +150,7 @@ complications_full_df <- pto_df %>%
   select.(id, 
           ends_with.('da'), 
           ends_with.('pr'), 
-          ends_with.('lc')) %>%  #may need to add location
+          ends_with.('lc')) %>% 
   pivot_longer.(cols = -id,
                 values_to = "values", 
                 values_drop_na = TRUE) %>% 
@@ -167,7 +166,7 @@ complications_full_df <- pto_df %>%
   
 
 # PUT ALL Complications INTO A SINGLE ROW PER PATIENT ID
-complications_df <- complications_full_df %>% 
+complications_flat_df <- complications_full_df %>% 
   summarize.(complication_codes = paste(complication_code, collapse = " "),
              complication_desc = paste(complication_desc, collapse = ", "),
              by = c(id)) %>% 
@@ -181,15 +180,13 @@ complications_df <- complications_full_df %>%
 
 ```{r procedures_data}
 
-source("01 - Classification Functions.R")
-
-procedures_df <- pto_df %>% 
+procedures_full_df <- pto_df %>% 
   select.(id, starts_with.('proc_')) %>% 
   select.(id, 
           ends_with.('da'), 
           ends_with.('ta'), 
           ends_with.('pr'), 
-          ends_with.('lc')) %>%  #may need to add location
+          ends_with.('lc')) %>% 
   pivot_longer.(cols = -id,
                 values_to = "values", 
                 values_drop_na = TRUE) %>% 
@@ -197,29 +194,98 @@ procedures_df <- pto_df %>%
   pivot_wider.(., names_from = desc, values_from = values, values_fn = list) %>% 
   mutate.(date = mdy(da), 
           time = as.character(ta),
-          # date_time = ymd_hm(ifelse(!is.na(time),paste(date, time),paste(date, "12:00"))),
           proc_code = as.character(pr), 
           loc_code = proc_loc_func(as.character(lc))
           ) %>% 
-  select.(id, serial, date, time, loc_code, proc_code)
+  select.(id, serial, date, time, loc_code, proc_code) %>% 
+  mutate.(proc_code = as.double(proc_code))
 
 #ADD IN ICD 9 Descriptions
-procedures_df <- procedures_df %>% 
+procedures_full_df <- procedures_full_df %>% 
   left_join.(icd_data, by = "proc_code")
 
-procedures_df <- procedures_df %>% 
+#ONLY PATIENTS WITH FOREARM FX
+procedures_full_df <- procedures_full_df %>% 
   inner_join.(fx_patients, by = "id")
 
 # write_csv(procedures_df, "~/Data/procedures_info.csv")  
-write_csv(procedures_df, "E:/Northwestern/12 - Capstone/procedures_info.csv")
+write_csv(procedures_full_df, "E:/Northwestern/12 - Capstone/procedures_info.csv")
+
+
+# PUT ALL Complications INTO A SINGLE ROW PER PATIENT ID
+procedures_flat_df <- procedures_full_df %>% 
+  summarize.(procedure_codes = paste(proc_code, collapse = " "),
+             procedure_desc = paste(procedure_desc, collapse = ", "),
+             by = c(id)) %>% 
+  mutate.(procedure_fasciotomy = str_detect(procedure_codes, pattern = '83.14')) %>% 
+  select.(id, procedure_fasciotomy, procedure_codes, procedure_desc) 
 
 ```
+
+## Specific Procedures Relating to Fasciotomy and Forearm Fractures
+
+```{r fasciotomy_forearm_proc}
+
+# Take only the first faciotomy procedure
+fasciotomy_flat_df <- procedures_full_df %>% 
+  filter.(proc_code == '83.14') %>% 
+  arrange.(id, date, time) %>% 
+  group_by(id) %>% 
+  arrange(date, time) %>% 
+  slice(1) %>% 
+  select.(id, date, time, loc_code, proc_code, procedure_desc) %>% 
+  rename.(fasciotomy_dt = date, 
+          fasciotomy_time = time, 
+          fasciotomy_loc = loc_code, 
+          fasciotomy_cd = proc_code, 
+          fasciotomy_desc = procedure_desc)
+
+# fasciotomy_df %>% 
+#   group_by(id) %>% 
+#   filter(n()>1)
+
+# Forearm surgical procedures -- check with Dr. Doug
+forarm_proc_list <- list('79.02', '79.12', '79.22', '79.32')
+
+forearm_procedure_flat_df <- procedures_full_df %>% 
+  filter.(proc_code %in% forarm_proc_list) %>% 
+  arrange.(id, date, time) %>% 
+  group_by(id) %>% 
+  arrange(date, time) %>% 
+  slice(1) %>% 
+  select.(id, date, time, loc_code, proc_code, procedure_desc) %>% 
+  rename.(forearm_dt = date, 
+          forearm_time = time, 
+          forearm_loc = loc_code, 
+          forearm_cd = proc_code, 
+          forearm_desc = procedure_desc)
+  
+# Closed reduction is the manipulation of the bone fragments wihtout surgical exposure of the fragments
+# 79.02 - without internal fixation --> CF
+# 79.12 - with internal fixation  --> CFIF
+
+
+# Open reduction is where the fracture fragments are exposed surgically by dissecting the tissues
+# 79.22 - without internal fixation --> OR
+# 79.32 - with internal fixation --> ORIF
+
+icd_data %>%
+  mutate.(radius_test = str_detect(procedure_desc, pattern = list('radius')),
+          ulna_test = str_detect(procedure_desc, pattern = list('ulna')),
+          facture_test = str_detect(procedure_desc, pattern = list('fracture'))) %>%
+  filter.(facture_test == T, radius_test == T, ulna_test == T)
+
+
+icd_data %>% 
+  filter.(proc_code == '79.36')
+
+```
+
+
 
 ## Patient Data
 
 ```{r patient_data}
-
-source("01 - Classification Functions.R")
 
 patient_df <- pto_df %>%
   select.(id,
@@ -308,15 +374,28 @@ patient_df <- pto_df %>%
   ) %>% 
   mutate_across.(ends_with.("_dt"), mdy)
 
+#INJURY DATA 
 patient_df <- patient_df %>% 
   left_join.(injury_data, by = c("e_code"))
-
+# THE INITIAL DIAGNOSIS
 patient_df <- patient_df %>% 
-  left_join.(diagnosis_df, by = "id")
-
+  left_join.(diagnosis_flat_df, by = "id")
+# WERE THERE ANY COMPLICATIONS?
 patient_df <- patient_df %>% 
-  left_join.(complications_df, by = "id")
+  left_join.(complications_flat_df, by = "id")
+# WHAT ARE ALL THE PROCEDURES THAT WERE PERFORMED
+patient_df <- patient_df %>% 
+  left_join.(procedures_flat_df, by = "id")
 
+# WHEN DID THE PATIENT HAVE A SURGICAL PROCEDURE?
+patient_df <- patient_df %>% 
+  left_join.(forearm_procedure_flat_df, by = "id")
+
+# WHEN DID THE PATIENT HAVE A FASCIOTOMY PROCEDURE?
+patient_df <- patient_df %>% 
+  left_join.(fasciotomy_flat_df, by = "id")
+
+# DOES THE PATIENT HAVE A FOREARM FX?
 patient_df <- patient_df %>% 
   inner_join.(fx_patients, by = "id") %>% 
   select(id,
@@ -349,16 +428,31 @@ patient_df <- patient_df %>%
          arrival_motor_resp,
          emergency_dpt_dt,
          emergency_dpt_time,
-         diagnosis_forearm_fx, 
          diagnosis_codes, 
          diagnosis_desc, 
+         diagnosis_forearm_fx,
          complication_codes, 
          complication_desc,
          complication_cs,
+         procedure_codes,
+         procedure_desc,
+         procedure_fasciotomy,
+         forearm_dt,
+         forearm_time, 
+         forearm_loc,
+         forearm_cd,
+         forearm_desc,
+         fasciotomy_dt,
+         fasciotomy_time, 
+         fasciotomy_loc,
+         fasciotomy_cd,
+         fasciotomy_desc, 
          discharge_status, 
          discharge_destination
+
          # Add in time calculations from arrival to first operative treatment
          # Emergency to first operative fracture treatment
+         # add in ISS score which is the highest of the 3 most severe scores across six body regions
   )
 
 # write_csv(procedures_df, "~/Data/procedures_info.csv")  
@@ -370,7 +464,8 @@ write_csv(patient_df, "E:/Northwestern/12 - Capstone/patient_info.csv")
 ```{r data_for_analysis}
 
 
-patient_df %>% create_report()
+patient_df %>% 
+  filter.(procedure_fasciotomy == T) %>% view()
 
 
 ```
