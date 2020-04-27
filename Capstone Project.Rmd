@@ -136,6 +136,48 @@ fx_patients <- diagnosis_df %>% filter.(forearm_frac == T) %>% select.(id)
 ```
 
 
+## Complications Results
+### Only pull results from Forearm Fractures
+
+```{r complications_data}
+
+
+source("01 - Classification Functions.R")
+
+#NORMALIZE ALL DIAGNOSIS RESULTS BY PATIENT ID
+complications_full_df <- pto_df %>% 
+  rename_with.(~ paste0(sub("complic_", "comp_0", .x),"_pr"), .cols = starts_with.('complic_')) %>% 
+  select.(id, starts_with.('comp_')) %>% 
+  select.(id, 
+          ends_with.('da'), 
+          ends_with.('pr'), 
+          ends_with.('lc')) %>%  #may need to add location
+  pivot_longer.(cols = -id,
+                values_to = "values", 
+                values_drop_na = TRUE) %>% 
+  separate.(name, into = c("type", "serial", "desc"), sep = "_") %>% 
+  pivot_wider.(., names_from = desc, values_from = values, values_fn = list) %>% 
+  mutate.(complication_code = as.character(pr)) %>% 
+  filter.(complication_code != 1) %>% 
+  mutate.(date = ifelse(!is.na(da), as.character(da), NULL), 
+          loc_code = proc_loc_func(as.character(lc)), 
+          complication_desc = complications_func(complication_code),
+          ) %>% 
+  select.(id, serial, date, loc_code, complication_code, complication_desc)
+  
+
+# PUT ALL Complications INTO A SINGLE ROW PER PATIENT ID
+complications_df <- complications_full_df %>% 
+  summarize.(complication_codes = paste(complication_code, collapse = " "),
+             patient_complications = paste(complication_desc, collapse = ", "),
+             by = c(id)) %>% 
+  mutate.(comp_syndrome = str_detect(complication_codes, pattern = '32')) %>% 
+  select.(id, comp_syndrome, complication_codes, patient_complications) 
+
+```
+
+
+
 ## Procedure Results
 
 ```{r procedures_data}
@@ -156,11 +198,11 @@ procedures_df <- pto_df %>%
   pivot_wider.(., names_from = desc, values_from = values, values_fn = list) %>% 
   mutate.(date = mdy(da), 
           time = as.character(ta),
-          date_time = ifelse(!is.na(time),ymd_hm(paste(date, time)),ymd_hm(paste(date, "12:00"))),
+          # date_time = ymd_hm(ifelse(!is.na(time),paste(date, time),paste(date, "12:00"))),
           proc_code = as.character(pr), 
           loc_code = proc_loc_func(as.character(lc))
           ) %>% 
-  select.(id, serial, date, time, date_time, loc_code, proc_code)
+  select.(id, serial, date, time, loc_code, proc_code)
 
 #ADD IN ICD 9 Descriptions
 procedures_df <- procedures_df %>% 
