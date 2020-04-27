@@ -123,14 +123,14 @@ diagnosis_full_df <- pto_df %>%
 
 # PUT ALL DIAGNOSIS INTO A SINGLE ROW PER PATIENT ID
 diagnosis_df <- diagnosis_full_df %>% 
-  summarize.(diag_codes = paste(diag_code, collapse = " "),
-             patient_diagnosis = paste(short_desc, collapse = ", "),
+  summarize.(diagnosis_codes = paste(diag_code, collapse = " "),
+             diagnosis_desc = paste(short_desc, collapse = ", "),
              by = c(id)) %>% 
-  mutate.(forearm_frac = str_detect(diag_codes, pattern = forearm_fx_list)) %>% 
-  select.(id, forearm_frac, diag_codes, patient_diagnosis) 
+  mutate.(diagnosis_forearm_fx = str_detect(diagnosis_codes, pattern = forearm_fx_list)) %>% 
+  select.(id, forearm_frac, diagnosis_codes, diagnosis_desc) 
 
 #ONLY PULL PATIENTS THAT HAVE FOREARM FRACTURE
-fx_patients <- diagnosis_df %>% filter.(forearm_frac == T) %>% select.(id)
+fx_patients <- diagnosis_df %>% filter.(diagnosis_forearm_fx == T) %>% select.(id)
 
 
 ```
@@ -169,13 +169,12 @@ complications_full_df <- pto_df %>%
 # PUT ALL Complications INTO A SINGLE ROW PER PATIENT ID
 complications_df <- complications_full_df %>% 
   summarize.(complication_codes = paste(complication_code, collapse = " "),
-             patient_complications = paste(complication_desc, collapse = ", "),
+             complication_desc = paste(complication_desc, collapse = ", "),
              by = c(id)) %>% 
-  mutate.(comp_syndrome = str_detect(complication_codes, pattern = '32')) %>% 
-  select.(id, comp_syndrome, complication_codes, patient_complications) 
+  mutate.(complication_cs = str_detect(complication_codes, pattern = '32')) %>% 
+  select.(id, complication_cs, complication_codes, complication_desc) 
 
 ```
-
 
 
 ## Procedure Results
@@ -316,6 +315,9 @@ patient_df <- patient_df %>%
   left_join.(diagnosis_df, by = "id")
 
 patient_df <- patient_df %>% 
+  left_join.(complications_df, by = "id")
+
+patient_df <- patient_df %>% 
   inner_join.(fx_patients, by = "id") %>% 
   select(id,
          trauma_number,
@@ -323,7 +325,6 @@ patient_df <- patient_df %>%
          race,
          dob,
          age,
-         forearm_frac,
          weight_kg, 
          temp_c,
          pulse, 
@@ -348,8 +349,12 @@ patient_df <- patient_df %>%
          arrival_motor_resp,
          emergency_dpt_dt,
          emergency_dpt_time,
-         diag_codes, 
-         patient_diagnosis, 
+         diagnosis_forearm_fx, 
+         diagnosis_codes, 
+         diagnosis_desc, 
+         complication_codes, 
+         complication_desc,
+         complication_cs,
          discharge_status, 
          discharge_destination
          # Add in time calculations from arrival to first operative treatment
