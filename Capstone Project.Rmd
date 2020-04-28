@@ -110,7 +110,6 @@ pto_df <- raw_data %>%
           injury_fall_height = hgt_fall, 
           injury_location = e849_x,
 
-          
           # TRANSPORTATION INFORMATION
           transportion_to_tc = transp_s,
           transporation_dispatch_dt = pre_1_d_da,
@@ -166,13 +165,13 @@ pto_df <- raw_data %>%
           
   ) %>% 
   filter.(!is.na(dob) & !is.na(age)) %>% 
-  mutate_across.(starts_with.('discharge_status_', discharge_status_func), 
-                 # discharge_feeding = d_disabl_f, 
-                 # discharge_locomotion = d_disabl_l, 
-                 # discharge_expression = d_disabl_e,
-                 # discharge_transfer_mobility = d_disabl_t, 
-                 # discharge_social_interaction = d_disabl_s,
-                 ) %>% 
+  # mutate_if.(starts_with.('discharge_status_'), discharge_status_func) %>%  #discharge_status
+  # mutate_across.(ends_with.('_eye_resp'), eye_resp_func) %>% #eye response function
+  # mutate_across.(ends_with.('_verbal_resp'), verbal_resp_func) %>% #eye response function
+  # mutate_across.(ends_with.('_motor_resp'), motor_resp_func) %>% #eye response function
+  # mutate_across.(starts_with.('complic_'), complications_func) %>% # Complications
+  # mutate_across.(starts_with.('pec_'), preexisting_condition_func) %>% # Classify Pre-Existing Conditions
+  # mutate_across.(intersect(starts_with.('proc_'),ends_with.('_sv')), admin_service_func) %>% # Service
   mutate.(dob = ifelse(is.na(dob), as.character(mdy(injury_dt)-years(age)), dob),
           age = ifelse(is.na(age) & !is.na(dob),
                        as.double(round(difftime(mdy(injury_dt), mdy(dob), unit="weeks")/52.25,0)),age),
@@ -187,13 +186,13 @@ pto_df <- raw_data %>%
          
            # INJURY FUNCTIONS
           injury_fall_height = fall_height_func(injury_fall_height),
-          injury_type = injury_func(injury_type),
+          injury_type = injury_type_func(injury_type),
           injury_patient_extricated = extricated_func(injury_patient_extricated),
-          injury_location = injury_location_func(injury_location),
-          
-          
+          injury_location = injury_loc_func(injury_location),
+
           # TRANSPORTATION
           transportion_to_tc = transportation_func(transportion_to_tc),
+          transportation_life_support = life_support_func(transportation_life_support), 
           
           
           # TRANSFER PATIENT
@@ -204,18 +203,13 @@ pto_df <- raw_data %>%
           admission_verbal_resp = verbal_resp_func(admission_verbal_resp),
           admission_motor_resp = motor_resp_func(admission_motor_resp),
           admission_drug_test = drug_func(admission_drug_test),
-          # admission_time = ifelse(is.na(admission_time), emergency_dpt_time, arrival_time),
-          # admission_dt = ifelse(is.na(admission_dt), emergency_dpt_dt, arrival_dt),
-          
-          
+          admission_time = ifelse(is.na(admission_time), emergency_dpt_time, admission_time),
+          admission_dt = ifelse(is.na(admission_dt), emergency_dpt_dt, admission_dt),
           
           # PROCEDURES
           
-          
-          
           ref_facility_desc = facility_name_func(ref_facility_desc), 
-          
-          
+      
           
           # ARRIVAL FUNCTIONS
 
@@ -230,7 +224,7 @@ pto_df <- raw_data %>%
   filter.(age <= 16)
 
 # FREE UP MEMORY AND DROP LARGE DATA 
-rm("raw_data")
+# rm("raw_data")
 tidytable::inv_gc()
 
 ```

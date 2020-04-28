@@ -112,7 +112,7 @@ county_func <- function(col) {
 }
 
 #Classification of type of injury (pg. 20)
-injury_func <- function(col) {
+injury_type_func <- function(col) {
   col_value <-  case.(col == 1, "Blunt",
                       col == 2, "Penetrating",
                       col == 3, "Burn", 
@@ -122,7 +122,7 @@ injury_func <- function(col) {
 }
 
 #Classification of type of injury (pg. 20)
-injury_location_func <- function(col) {
+injury_loc_func <- function(col) {
   col_value <-  case.(col == 0,    'Home',
                       col == 1,    'Farm',
                       col == 2,    'Mine/Quarry',
@@ -157,22 +157,6 @@ transportation_func <- function(col) {
                       col == 7, "Walk-In",
                       col == 8, "Other",
                       col == 9, "Quick Response Service",
-                      default = "Unknown")
-  return(col_value)
-}
-
-#Record of drugs patient tested positive at referring hospital (pg. 42)
-drug_func <- function(col) {
-  col_value <-  case.(col == 0, "Not Tested",
-                      col == 1, "None",
-                      col == 2, "Cocaine",
-                      col == 3, "PCP",
-                      col == 4, "Benzodiazepines",
-                      col == 5, "Barbiturates",
-                      col == 6, "Narcotics",
-                      col == 7, "Amphetamines",
-                      col == 8, "Mariguana",
-                      col == 9, "Tricycloids", 
                       default = "Unknown")
   return(col_value)
 }
@@ -347,206 +331,7 @@ fall_height_func <- function(col) {
   return(col_value)
 }
 
-# Location of procedure
-proc_loc_func <- function(col) {
-  col_value <-  case.(col == 1, "ED",
-                      col == 2, "OR",
-                      col == 3, "ICU",
-                      col == 4, "Med/Surg Floor",
-                      col == 5, "Step-down Unit", 
-                      col == 6, "Radiology", 
-                      col == 7, "Neclear Medicine", 
-                      col == 8, "Burn Unit", 
-                      col == 9, "PMR", 
-                      col == 10, "Minor Surgery Unit", 
-                      col == 13, "PACU", 
-                      col == 14, "Postmortem" , 
-                      col == 15, "EMS", 
-                      col == 16, "Referring Facility", 
-                      col == 17, "Special Procedure Unit",
-                      col == 18, "Angoigraphy", 
-                      default = "Unknown")
-  return(col_value)
-}
 
-
-# Occurances and Complications (pg. 122-125)
-complications_func <- function(col) {
-  col_value <-  case.(col == 1 , 'None' ,
-                      col == 10 , 'Burn Graft Loss (of any percentage)' ,
-                      col == 11 , 'Burn Wound Infection Post Excision' ,
-                      col == 12 , 'Burn Wound Sepsis' ,
-                      col == 13 , 'Burn Wound Cellulitis' ,
-                      col == 14 , 'Delay in Donor Site Healing' ,
-                      col == 15 , 'Hypovolemia' ,
-                      col == 20 , 'Adult Respiratory Distress Syndrome (ARDS)' ,
-                      col == 201 , 'Drug or Alcohol Withdrawal Syndrome' ,
-                      col == 202 , 'Unplanned Intubation' ,
-                      col == 203 , 'Unplanned Return to the OR' ,
-                      col == 204 , 'Unplanned Admission to the ICU' ,
-                      col == 205 , 'Stroke/CVA' ,
-                      col == 206 , 'Cardiac Arrest with Resuscitative Efforts by Healthcare Provider' ,
-                      col == 21 , 'Acute Respiratory Failure' ,
-                      col == 22 , 'Aspiration/Aspiration Pneumonia' ,
-                      col == 23 , 'Atelectasis' ,
-                      col == 24 , 'Fat Embolus Syndrome' ,
-                      col == 25 , 'Hemothorax' ,
-                      col == 26 , 'Pneumonia' ,
-                      col == 27 , 'Iatrogenic Pneumothorax' ,
-                      col == 28 , 'Pulmonary Embolus (PE)' ,
-                      col == 29 , 'Pulmonary Arrest' ,
-                      col == 30 , 'Acute Arterial Occlusion (not present on admission)' ,
-                      col == 31 , 'Cardiac Arrest' ,
-                      col == 32 , 'Extremity Compartment Syndrome (not present on admission)' ,
-                      col == 33 , 'Deep Vein Thrombosis (DVT)' ,
-                      col == 34 , 'Major Dysrhythmia' ,
-                      col == 35 , 'Myocardial Infarction (MI)' ,
-                      col == 36 , 'Acute Arterial Embolus' ,
-                      col == 37 , 'Acute Arterial Occlusion' ,
-                      col == 38 , 'Acute Arterial Thrombosis' ,
-                      col == 39 , 'Arrythmia' ,
-                      col == 40 , 'Blood Transfusion Reaction' ,
-                      col == 41 , 'Coagulopathy' ,
-                      col == 42 , 'Congestive Heart Failure' ,
-                      col == 43 , 'Acute Tracheobronchitis' ,
-                      col == 44 , 'Pleural Effusion' ,
-                      col == 45 , 'Pulmonary Edema' ,
-                      col == 46 , 'Hypothermia' ,
-                      col == 47 , 'Post-Operative Hemorrhage' ,
-                      col == 48 , 'Cardiopulmonary Arrest (unexpected, not resulting in death)' ,
-                      col == 49 , 'Adverse Drug Reaction' ,
-                      col == 50 , 'Acute Kidney Injury' ,
-                      col == 51 , 'Syndrome Inappropriate Antidiuretic Hormone (SIADH)' ,
-                      col == 60 , 'Cholecystitis' ,
-                      col == 61 , 'Hepatitis' ,
-                      col == 62 , 'Hyperbilirubinemia' ,
-                      col == 63 , 'Liver Failure' ,
-                      col == 64 , 'CNS Infection' ,
-                      col == 65 , 'Dehiscence/Evisceration' ,
-                      col == 66 , 'Progression of Original Neurologic Insult' ,
-                      col == 68 , 'Delirium Tremens (DTs)' ,
-                      col == 69 , 'Unrecognized Mainstem Bronchus Intubation' ,
-                      col == 70 , 'Empyema' ,
-                      col == 71 , 'Fungal Sepsis' ,
-                      col == 72 , 'Intra-abdominal Abscess' ,
-                      col == 73 , 'Meningitis' ,
-                      col == 74 , 'Osteomyelitis' ,
-                      col == 75 , 'Other Abscess' ,
-                      col == 76 , 'Sepsis' ,
-                      col == 77 , 'Septicemia' ,
-                      col == 78 , 'Acute Sinusitis' ,
-                      col == 79 , 'Soft Tissue Infection' ,
-                      col == 80 , 'Esophageal Intubation (inhouse-only)' ,
-                      col == 81 , 'Fistula, Enterocutaneous' ,
-                      col == 82 , 'Fistula, Enteroenteric' ,
-                      col == 83 , 'GI Bleeding' ,
-                      col == 84 , 'Pancreatitis' ,
-                      col == 85 , 'Pseudomembranous Colitis/C. Difficle' ,
-                      col == 86 , 'Small Bowel Obstruction (SBO) (excluding ileus)' ,
-                      col == 87 , 'Anoxic Encephalopathy' ,
-                      col == 88 , 'Diabetes Insipidus' ,
-                      col == 89 , 'Cerebral Infarct/Stroke' ,
-                      col == 90 , 'Other Neurologic Sequelae' ,
-                      col == 91 , 'Iatrogenic Organ, Nerve, Vessel' ,
-                      col == 92 , 'Dehiscence' ,
-                      col == 93 , 'Non-Traumatic Evisceration' ,
-                      col == 94 , 'Decubitus' ,
-                      col == 95 , 'Other not listed' ,
-                      col == 96 , 'Seizures' ,
-                      col == 97 , 'Urinary Tract Infection (UTI) (not present on admission)' ,
-                      col == 98 , 'Ventriculitis' ,
-                      col == 99 , 'Wound Infection (traumatic or incisional)')
-  return(col_value)
-}
-
-
-# Post Graduate Level for Resident - a way to classify experience (pg. 60)
-pgy_func <- function(col) {
-  col_value <-  case.(col == 1 ,  'Year 1' ,
-                      col == 2 ,  'Year 2' ,
-                      col == 3 ,  'Year 3' ,
-                      col == 4 ,  'Year 4' ,
-                      col == 5 ,  'Year 5' ,
-                      col == 6 ,  'Year 6' ,
-                      col == 7 ,  'Year 7' ,
-                      col == 8 ,  'Year 8' ,
-                      col == 9 ,  'Year 9' ,
-                      col == 'F', 'Fellow' ,
-                      col == 'U', 'Not Documented', 
-                      default =   'Not Documented' )
-  return(col_value)
-}
-
-# Pre-existing Condition
-preexisting_condition_func <- function(col) {
-  col_value <-  case.(col == '0.00',    'None',
-                      col == 'A.01',    'History of Cardiac Surgery',
-                      col == 'A.02',    'Coronary Artery Disease',
-                      col == 'A.03',    'Congestive Heart Failure',
-                      col == 'A.04',    'Cor Pulmonale',
-                      col == 'A.05',    'Myocardial Infarction',
-                      col == 'A.06',    'Hypertension',
-                      col == 'A.07',    'Congenital Cardiac Disease',
-                      col == 'B.03',    'Diabetes Mellitus',
-                      col == 'C.01',    'Peptic Ulcer Disease',
-                      col == 'C.02',    'Gastric or Esophageal Varices',
-                      col == 'C.03',    'Pancreatitis',
-                      col == 'C.04',    'Inflammatory Bowel Disease',
-                      col == 'C.05',    'Bariatric Surgery',
-                      col == 'D.01',    'Acquired Coagulopathy',
-                      col == 'D.02',    'Reversible Anticoagulant Therapy',
-                      col == 'D.04',    'Pre-existing Anemia',
-                      col == 'D.05',    'Anti-platelet Agents',
-                      col == 'D.07',    'Non-reversible Anticoagulant Therapy',
-                      col == 'D.08',    'Other Bleeding Disorder',
-                      col == 'E.00',    'History of Psychiatric Disorders',
-                      col == 'E.01',    'Attention Deficit Disorder',
-                      col == 'E.02',    'Mental Retardation',
-                      col == 'F.01',    'HIV/AIDS',
-                      col == 'F.02',    'Routine Steroid Therapy',
-                      col == 'F.03',    'Transplants',
-                      col == 'F.04',    'Active Chemotherapy',
-                      col == 'G.01',    'Bilirubin > 2 mg% (On Admission)',
-                      col == 'G.02',    'Documented History of Cirrhosis',
-                      col == 'H.01',    'Undergoing Current Therapy',
-                      col == 'H.02',    'Concurrent or Existence of Metastasis',
-                      col == 'H.03',    'History of Pediatric Malignancy',
-                      col == 'I.01',    'Arthritis',
-                      col == 'I.02',    'Systemic Lupus Erythematosus',
-                      col == 'I.03',    'Osteogenisis (OI)',
-                      col == 'J.01',    'Spinal Cord Injury',
-                      col == 'J.02',    'Multiple Sclerosis',
-                      col == 'J.03',    'Alzheimers Disease',
-                      col == 'J.04',    'Seizures',
-                      col == 'J.05',    'Chronic Demyelinating Disease',
-                      col == 'J.06',    'Chronic Dementia',
-                      col == 'J.07',    'Organic Brain Syndrome',
-                      col == 'J.08',    'Parkinsons Disease',
-                      col == 'J.09',    'CVA',
-                      col == 'J.10',    'Autism Spectrum',
-                      col == 'J.11',    'Cerebral Palsy (CP)',
-                      col == 'K.00',    'Obesity',
-                      col == 'L.05',    'Respiratory Disease',
-                      col == 'M.01',    'Serum Creatinine > 2 mg% (On Admission)',
-                      col == 'M.02',    'Dialysis (Excludes Transplant Patients)',
-                      col == 'N.01',    'Drug Use Disorder',
-                      col == 'N.02',    'Chronic Ongoing Alcohol Abuse',
-                      col == 'P.00',    'Pregnancy',
-                      col == 'Q.00',    'Any Previous History of Admission for Trauma or Burn',
-                      col == 'Q.01',    'Previous History of Head Trauma',
-                      col == 'R.01',    'Thyroid Disease',
-                      col == 'S.01',    'Ascites within 30 Days',
-                      col == 'S.02',    'Current Smoker',
-                      col == 'S.03',    'Advanced Directive Limiting Care',
-                      col == 'S.04',    'Functionally Dependent Health Status',
-                      col == 'S.05',    'History of Angina within 30 Days',
-                      col == 'S.06',    'History of PVD',
-                      col == 'S.07',    'Prematurity',
-                      col == 'S.08',    'Pre-hospital Cardiac Arrest',
-                      col == 'T.00',    'Congenital Disorder',
-                      default =          'Not Documented' )
-  return(col_value)
-}
 
 # Protective Equipment
 protective_equipment_func <- function(col) {
@@ -563,65 +348,7 @@ protective_equipment_func <- function(col) {
   return(col_value)
 }
 
-# Service or Specality - not the same as surgical speciality
-service_func <- function(col) {
-  col_value <-  case.(col == 0,    'None',
-                      col == 1,    'Trauma',
-                      col == 2,    'Neurosurgery',
-                      col == 3,    'Orthopedics',
-                      col == 4,    'Thoracic Surgery',
-                      col == 5,    'Vascular Surgery',
-                      col == 6,    'Pediatrics',
-                      col == 7,    'Oromaxillo Facial Service',
-                      col == 8,    'OB/GYN',
-                      col == 9,    'Burn Services',
-                      col == 10,    'Cardiology',
-                      col == 11,    'Cardiothoracic Surgery',
-                      col == 12,    'Drug/Alcohol Counselor',
-                      col == 13,    'ENT',
-                      col == 14,    'Family Medicine',
-                      col == 15,    'General Surgery',
-                      col == 16,    'Infectious Disease',
-                      col == 17,    'Internal Medicine',
-                      col == 18,    'Nephrology',
-                      col == 19,    'Neurology',
-                      col == 20,    'Nutrition',
-                      col == 21,    'Occupational Therapy',
-                      col == 22,    'Ophthalmology',
-                      col == 23,    'Oral Surgery',
-                      col == 24,    'Physiatry',
-                      col == 25,    'Physical Therapy',
-                      col == 26,    'Plastic Surgery',
-                      col == 27,    'Psychiatry',
-                      col == 28,    'Pulmonary',
-                      col == 29,    'Social Services',
-                      col == 30,    'Speech Therapy',
-                      col == 31,    'Urology',
-                      col == 32,    'Case Management',
-                      col == 33,    'Palliative Care',
-                      col == 34,    'Pastoral Care',
-                      col == 35,    'Geriatrics/Gerontology',
-                      col == 99,    'Other',
-                      default = NA)
-  return(col_value)
-}
 
-# Service for anything ending in _SV
-admin_service_func <- function(col) {
-  col_value <-  case.(col == 0,    'Not Admitted',
-                      col == 1,    'Trauma Service (General Surgery)',
-                      col == 2,    'Neurosurgery Service',
-                      col == 3,    'Orthopedic Service',
-                      col == 4,    'Thoracic Surgery Service',
-                      col == 5,    'Other Surgical',
-                      col == 6,    'Other Non-Surgical',
-                      col == 7,    'Oromaxillofacial Service',
-                      col == 8,    'Obstetrics/Gynecology Service',
-                      col == 9,    'Burn Service',
-                      col == 10,    'Interventional Radiology', 
-                      default = NA)
-  return(col_value)
-}
 
 
 # Facility names were patients can be transferred from or to
