@@ -1,6 +1,6 @@
 #USE THESE FUNCTIONS OVER MULTIPLE COLUMNS AFTER THE COLUMNS ARE NORMALIZED
 
-#Record of drugs patient tested positive at referring hospital (pg. 42)
+#Record of drugs patient tested positive at referring hospital (pg. 42) --> DRUG_SCR_1
 drug_func <- function(col) {
   col_value <-  case.(col == 0, "Not Tested",
                       col == 1, "None",
@@ -17,7 +17,7 @@ drug_func <- function(col) {
 }
 
 
-# Location of procedure
+# Location of procedure   ----> ends with _lc PROC_01_LC
 proc_loc_func <- function(col) {
   col_value <-  case.(col == 1, "ED",
                       col == 2, "OR",
@@ -39,7 +39,7 @@ proc_loc_func <- function(col) {
   return(col_value)
 }
 
-# Occurances and Complications (pg. 122-125)
+# Occurances and Complications (pg. 122-125) ---> starts with compr_  (compr_01)
 complications_func <- function(col) {
   col_value <-  case.(col == 1 , 'None' ,
                       col == 10 , 'Burn Graft Loss (of any percentage)' ,
@@ -128,7 +128,7 @@ complications_func <- function(col) {
   return(col_value)
 }
 
-# Post Graduate Level for Resident - a way to classify experience (pg. 60)
+# Post Graduate Level for Resident - a way to classify experience (pg. 60) ---> ends with _pgy (SR_PGY)
 pgy_func <- function(col) {
   col_value <-  case.(col == 1 ,  'Year 1' ,
                       col == 2 ,  'Year 2' ,
@@ -145,7 +145,7 @@ pgy_func <- function(col) {
   return(col_value)
 }
 
-# Pre-existing Condition
+# Pre-existing Condition -> starts with PEC_  (PEC_1)
 preexisting_condition_func <- function(col) {
   col_value <-  case.(col == '0.00',    'None',
                       col == 'A.01',    'History of Cardiac Surgery',
@@ -216,7 +216,7 @@ preexisting_condition_func <- function(col) {
   return(col_value)
 }
 
-# Service or Specality - not the same as surgical speciality
+# Service or Specality - not the same as surgical speciality  --> ends with _serv (C01_SERV)
 service_func <- function(col) {
   col_value <-  case.(col == 0,    'None',
                       col == 1,    'Trauma',
