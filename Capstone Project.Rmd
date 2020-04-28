@@ -98,33 +98,81 @@ pto_df <- raw_data %>%
   rename.(trauma_number = trauma_num, 
           dob = d_birth_a, 
           age = age_in_yrs, 
-          injury_dt = inj_date_a, 
-          injury_time = inj_time_a, 
           zip_code = pat_adr_z, 
           insurance_type = pay_cat1,
           insurance_1 = pay_cat1_o,
-          discharge_status = dis_status,
-          discharge_destination = discg_to,
           injury_type = inj_type,
-          transportion_to_tc = transp_s,
-          drug_test = drug_r_1,
-          attending_surgeon_spec = surg_sp,
+
+          # INJURY INFORMATION
+          injury_dt = inj_date_a, 
+          injury_time = inj_time_a, 
           injury_patient_extricated = extric_s,
           injury_fall_height = hgt_fall, 
-          arrival_eye_resp = eye_opng_a,
-          arrival_verbal_resp = ver_resp_a,
-          arrival_motor_resp = mot_resp_a,           
-          arrival_time = ref_ar_t_a, 
-          arrival_dt = ref_ar_d_a,
-          pulse = pulse_a,
-          resp_rate = resp_rat_a,
-          bloodpressure = sys_bp_a,
-          weight_kg = weight_kg,
-          temp_c = temp_c, 
+          injury_location = e849_x,
+
+          
+          # TRANSPORTATION INFORMATION
+          transportion_to_tc = transp_s,
+          transporation_dispatch_dt = pre_1_d_da,
+          transporation_dispatch_time = pre_1_d_ta ,
+          transporation_arrival_dt = pre_1_a_da ,
+          transporation_arrival_time = pre_1_a_ta ,
+          transporation_leave_dt = pre_1_l_da ,
+          transporation_leave_time = pre_1_l_ta ,
+          transportation_life_support = life_p1,
+          transportation_eye_resp = eye_opng_1,
+          transportation_verbal_resp = ver_resp_1,
+          transportation_motor_resp = mot_resp_1,  
+          transportation_pulse = pulse_1,
+          transportation_resp_rate = resp_rat_1,
+          transportation_bloodpressure = sys_bp_1,
+          
+          # REFERRING FACILITY
+          # ref_facility_adm_time = ref_ar_t_a, 
+          # ref_facility_adm_dt = ref_ar_d_a, 
+          ref_facility_disc_time = ref_dp_t_a, 
+          ref_facility_disc_dt = ref_dp_d_a, 
+          ref_facility_desc = ref_fac_n, 
+          
+
+          
+          attending_surgeon_spec = surg_sp,
+
+          
+          admission_time = ref_ar_t_a, 
+          admission_dt = ref_ar_d_a,
+          admission_eye_resp = eye_opng_a,
+          admission_verbal_resp = ver_resp_a,
+          admission_motor_resp = mot_resp_a,           
+          admission_pulse = pulse_a,
+          admission_resp_rate = resp_rat_a,
+          admission_bloodpressure = sys_bp_a,
+          admission_weight_kg = weight_kg,
+          admission_temp_c = temp_c, 
+          admission_drug_test = drug_scr_1,
+          
           emergency_dpt_time = eda_time_a, 
           emergency_dpt_dt = eda_date_a, 
+          
+          # DISCHARGE
+          discharge_status = dis_status,
+          discharge_destination = discg_to,
+          discharge_status_feeding = d_disabl_f, 
+          discharge_status_locomotion = d_disabl_l, 
+          discharge_status_expression = d_disabl_e,
+          discharge_status_transfer_mobility = d_disabl_t, 
+          discharge_status_social_interaction = d_disabl_s, 
+
+          
   ) %>% 
   filter.(!is.na(dob) & !is.na(age)) %>% 
+  mutate_across.(starts_with.('discharge_status_', discharge_status_func), 
+                 # discharge_feeding = d_disabl_f, 
+                 # discharge_locomotion = d_disabl_l, 
+                 # discharge_expression = d_disabl_e,
+                 # discharge_transfer_mobility = d_disabl_t, 
+                 # discharge_social_interaction = d_disabl_s,
+                 ) %>% 
   mutate.(dob = ifelse(is.na(dob), as.character(mdy(injury_dt)-years(age)), dob),
           age = ifelse(is.na(age) & !is.na(dob),
                        as.double(round(difftime(mdy(injury_dt), mdy(dob), unit="weeks")/52.25,0)),age),
@@ -136,23 +184,48 @@ pto_df <- raw_data %>%
           race = race_func(race),
           county_pa = county_func(county_pa),
           insurance_type = insurance_func(insurance_type), 
-          # INJURY FUNCTIONS
+         
+           # INJURY FUNCTIONS
           injury_fall_height = fall_height_func(injury_fall_height),
           injury_type = injury_func(injury_type),
           injury_patient_extricated = extricated_func(injury_patient_extricated),
-          # ARRIVAL FUNCTIONS
-          arrival_eye_resp = eye_resp_func(arrival_eye_resp),
-          arrival_verbal_resp = verbal_resp_func(arrival_verbal_resp),
-          arrival_motor_resp = motor_resp_func(arrival_motor_resp),
-          # CLEAN UP ARRIVAL TIMES IF PATIENT WENT DIRECTLY TO ER
-          arrival_time = ifelse(is.na(arrival_time), emergency_dpt_time, arrival_time),
-          arrival_dt = ifelse(is.na(arrival_dt), emergency_dpt_dt, arrival_dt),
+          injury_location = injury_location_func(injury_location),
+          
+          
+          # TRANSPORTATION
           transportion_to_tc = transportation_func(transportion_to_tc),
-          drug_test = drug_func(drug_test),
+          
+          
+          # TRANSFER PATIENT
+          
+          
+          # ADMISSION
+          admission_eye_resp = eye_resp_func(admission_eye_resp),
+          admission_verbal_resp = verbal_resp_func(admission_verbal_resp),
+          admission_motor_resp = motor_resp_func(admission_motor_resp),
+          admission_drug_test = drug_func(admission_drug_test),
+          # admission_time = ifelse(is.na(admission_time), emergency_dpt_time, arrival_time),
+          # admission_dt = ifelse(is.na(admission_dt), emergency_dpt_dt, arrival_dt),
+          
+          
+          
+          # PROCEDURES
+          
+          
+          
+          ref_facility_desc = facility_name_func(ref_facility_desc), 
+          
+          
+          
+          # ARRIVAL FUNCTIONS
+
           attending_surgeon_spec = attending_surgeon_func(attending_surgeon_spec),
+          
           #DISCHARGE FUNCTIONS
+          
           discharge_status = discharge_status_func(discharge_status), 
           discharge_destination = discharge_destination_func(discharge_destination)) %>% 
+
   relocate.(id, .before = alias_inst_num) %>% 
   filter.(age <= 16)
 

@@ -177,6 +177,17 @@ drug_func <- function(col) {
   return(col_value)
 }
 
+#Functional Status at Discharge
+discharge_status_func <- function(col) {
+  col_value <-  case.(col == 0,    'Pediatric (Age < 2)',
+                      col == 1,    'Fully Dependent',
+                      col == 2,    'Partially Dependent',
+                      col == 3,    'Mostly Independent',
+                      col == 4,    'Fully Independent',
+                      default = "Unknown")
+  return(col_value)
+}
+
 #Attending surgeon specialty who was present in OR (pg. 55)
 attending_surgeon_func <- function(col) {
   col_value <-  case.(col == 1, 'Trauma/General',
@@ -230,6 +241,17 @@ motor_resp_func <- function(col) {
                       col == 4, "Withdraws",
                       col == 5, "Localizes pain",
                       col == 6, "Obeys Command", 
+                      default = "Unknown")
+  return(col_value)
+}
+
+
+# Highest Level of Provider - Life Support (pg 25)
+life_support_func <- function(col) {
+  col_value <-  case.(col == 1,    'Basic/Professional',
+                      col == 2,    'Advanced',
+                      col == 3,    'Basic/Non-Professional',
+                      col == 4,    'None',
                       default = "Unknown")
   return(col_value)
 }
