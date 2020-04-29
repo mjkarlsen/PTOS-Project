@@ -34,6 +34,8 @@ knitr::opts_chunk$set(echo = FALSE)
 ## Load Multiple Data Sources
 ```{r load_data}
 
+tic()
+
 raw_data <- fread("E:/Northwestern/12 - Capstone/PTOS_Data.csv", na.strings = c("<unk>", "", "<n/a>")) %>%  
   as.data.table() %>% 
   clean_names()
@@ -58,6 +60,8 @@ diagnosis_data <- fread("E:/Northwestern/12 - Capstone/diagnosis_data.csv") %>%
   clean_names() %>% 
   mutate.(diag_code = as.double(diag_code))
 
+toc()
+
 #AWS - 54.111 sec elapsed
 #PC - 41.68 sec elapsed
 
@@ -79,6 +83,8 @@ forearm_fx_list <- paste(seq(from = 813.00, to = 813.99, by = 0.01), collapse = 
 Decided to remove any columns that only contain NA or NULL values to assist reducing the size of data. 
 
 ```{r drop_columns}
+
+tic()
 
 source("01 - Classification Functions.R")
 
@@ -127,19 +133,16 @@ pto_df <- raw_data %>%
           transportation_bloodpressure = sys_bp_1,
           
           # REFERRING FACILITY
-          # ref_facility_adm_time = ref_ar_t_a, 
-          # ref_facility_adm_dt = ref_ar_d_a, 
+          ref_facility_adm_time = ref_ar_t_a,
+          ref_facility_adm_dt = ref_ar_d_a,
           ref_facility_disc_time = ref_dp_t_a, 
           ref_facility_disc_dt = ref_dp_d_a, 
           ref_facility_desc = ref_fac_n, 
-          
+          ref_facility_trans = transp_r, 
 
-          
-          attending_surgeon_spec = surg_sp,
-
-          
-          admission_time = ref_ar_t_a, 
-          admission_dt = ref_ar_d_a,
+          # ADMISSION 
+          # admission_time = ref_ar_t_a, 
+          # admission_dt = ref_ar_d_a,
           admission_eye_resp = eye_opng_a,
           admission_verbal_resp = ver_resp_a,
           admission_motor_resp = mot_resp_a,           
@@ -148,10 +151,9 @@ pto_df <- raw_data %>%
           admission_bloodpressure = sys_bp_a,
           admission_weight_kg = weight_kg,
           admission_temp_c = temp_c, 
-          admission_drug_test = drug_scr_1,
-          
           emergency_dpt_time = eda_time_a, 
           emergency_dpt_dt = eda_date_a, 
+          attending_surgeon_spec = surg_sp,
           
           # DISCHARGE
           discharge_status = dis_status,
@@ -161,22 +163,27 @@ pto_df <- raw_data %>%
           discharge_status_expression = d_disabl_e,
           discharge_status_transfer_mobility = d_disabl_t, 
           discharge_status_social_interaction = d_disabl_s, 
+          
+          # DATES AND TIMES
 
           
   ) %>% 
   filter.(!is.na(dob) & !is.na(age)) %>% 
-  # mutate_if.(starts_with.('discharge_status_'), discharge_status_func) %>%  #discharge_status
-  # mutate_across.(ends_with.('_eye_resp'), eye_resp_func) %>% #eye response function
-  # mutate_across.(ends_with.('_verbal_resp'), verbal_resp_func) %>% #eye response function
-  # mutate_across.(ends_with.('_motor_resp'), motor_resp_func) %>% #eye response function
-  # mutate_across.(starts_with.('complic_'), complications_func) %>% # Complications
-  # mutate_across.(starts_with.('pec_'), preexisting_condition_func) %>% # Classify Pre-Existing Conditions
-  # mutate_across.(intersect(starts_with.('proc_'),ends_with.('_sv')), admin_service_func) %>% # Service
-  mutate.(dob = ifelse(is.na(dob), as.character(mdy(injury_dt)-years(age)), dob),
-          age = ifelse(is.na(age) & !is.na(dob),
-                       as.double(round(difftime(mdy(injury_dt), mdy(dob), unit="weeks")/52.25,0)),age),
-          id = paste0(str_remove_all(dob, "/"), trauma_number), 
-          dob = mdy(dob),
+  mutate.(dob = dob_cleanup(age, dob), # ifelse(is.na(dob), as.character(mdy(injury_dt)-years(age)), dob),
+          age = age_cleanup(age, dob, injury_dt), #ifelse(is.na(age) & !is.na(dob), as.double(round(difftime(mdy(injury_dt), mdy(dob), unit="weeks")/52.25,0)),age),
+          id = paste0(str_remove_all(dob, "/"), trauma_number)) %>% 
+    relocate.(id, .before = alias_inst_num) %>% 
+  filter.(age <= 16)
+
+tidytable::inv_gc()
+
+toc()
+#25.36 sec elapsed
+
+tic()
+
+pto_df <- pto_df %>% 
+  mutate.(dob = mdy(dob),
           e_code = as.character(e_code),
           #CASE STATEMENTS USING HELPER FUNCTIONS
           sex = gender_func(sex),
@@ -194,40 +201,80 @@ pto_df <- raw_data %>%
           transportion_to_tc = transportation_func(transportion_to_tc),
           transportation_life_support = life_support_func(transportation_life_support), 
           
-          
           # TRANSFER PATIENT
+          ref_facility_desc = facility_name_func(ref_facility_desc), 
+          ref_facility_trans = transportation_func(ref_facility_trans), 
           
           
           # ADMISSION
           admission_eye_resp = eye_resp_func(admission_eye_resp),
           admission_verbal_resp = verbal_resp_func(admission_verbal_resp),
           admission_motor_resp = motor_resp_func(admission_motor_resp),
-          admission_drug_test = drug_func(admission_drug_test),
-          admission_time = ifelse(is.na(admission_time), emergency_dpt_time, admission_time),
-          admission_dt = ifelse(is.na(admission_dt), emergency_dpt_dt, admission_dt),
+          # admission_time = ifelse(is.na(admission_time), emergency_dpt_time, admission_time),
+          # admission_dt = ifelse(is.na(admission_dt), emergency_dpt_dt, admission_dt),
           
           # PROCEDURES
           
-          ref_facility_desc = facility_name_func(ref_facility_desc), 
-      
           
           # ARRIVAL FUNCTIONS
-
           attending_surgeon_spec = attending_surgeon_func(attending_surgeon_spec),
           
           #DISCHARGE FUNCTIONS
           
           discharge_status = discharge_status_func(discharge_status), 
-          discharge_destination = discharge_destination_func(discharge_destination)) %>% 
+          discharge_destination = discharge_destination_func(discharge_destination)) 
 
-  relocate.(id, .before = alias_inst_num) %>% 
-  filter.(age <= 16)
+toc()
+
 
 # FREE UP MEMORY AND DROP LARGE DATA 
 # rm("raw_data")
 tidytable::inv_gc()
 
 ```
+
+
+```{r referring_facility_diagnosis}
+
+#NORMALIZE ALL DIAGNOSIS RESULTS BY PATIENT ID
+ref_diag_full_df <- pto_df %>% 
+  select.(id, starts_with.('ref_')) %>% 
+  pivot_longer.(cols = -c(id, 
+                          ref_facility_adm_dt, 
+                          ref_facility_adm_time, 
+                          ref_facility_disc_dt, 
+                          ref_facility_disc_time, 
+                          ref_facility_desc),
+                values_to = "proc_code", 
+                values_drop_na = TRUE
+                ) %>% 
+  filter.(str_detect(name, pattern = 'ref_intd')) %>% 
+  mutate.(proc_code = as.double(proc_code)) %>% 
+  left_join.(icd_data, by = "proc_code") %>% 
+  rename.(date = ref_facility_adm_dt, 
+          time = ref_facility_adm_time, 
+          location = ref_facility_desc,
+          code = proc_code, 
+          code_desc_long = procedure_desc, 
+          code_desc_short = short_desc) %>% 
+  select(id, date, time, location, code, code_desc_long, code_desc_short)
+
+# PUT ALL DIAGNOSIS INTO A SINGLE ROW PER PATIENT ID
+diagnosis_flat_df <- diagnosis_full_df %>% 
+  summarize.(diagnosis_codes = paste(diag_code, collapse = " "),
+             diagnosis_desc = paste(short_desc, collapse = ", "),
+             by = c(id)) %>% 
+  mutate.(fltr_diagnosis = str_detect(diagnosis_codes, pattern = forearm_fx_list)) %>% 
+  select.(id, fltr_diagnosis, diagnosis_codes, diagnosis_desc) 
+
+#ONLY PULL PATIENTS THAT HAVE FOREARM FRACTURE
+fx_patients <- diagnosis_flat_df %>% 
+  filter.(fltr_diagnosis == T) %>% 
+  select.(id)
+
+```
+
+
 
 ## Diagnosis Results
 ### Only pull results from Forearm Fractures
