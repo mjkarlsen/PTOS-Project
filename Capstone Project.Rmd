@@ -7,6 +7,7 @@ date: "4/11/2020"
 ```{r, setup}
 
 # devtools::install_github("markfairbanks/tidytable")
+# devtools::install_github("ultramattyice/ptos")
 
 pacman::p_load( tidyverse, 
                 fpp3, 
@@ -19,7 +20,8 @@ pacman::p_load( tidyverse,
                 data.table,
                 tidytable, 
                 tictoc, 
-                tidystringdist
+                tidystringdist, 
+                ptos
                 )
 
 options(scipen=999)  #remove scientific notation
@@ -68,105 +70,6 @@ toc()
 ```
 
 
-```{r}
-
-
-
-total_observations <- raw_data %>% summarize.(count = n.()) %>% as.integer()
-
-complete_observations <- map_dfc.(raw_data, ~sum(is.na(.))) %>% 
-  rename_with.(~ sub(".x", "", .x)) %>% 
-  pivot_longer.(cols = everything.(), names_to = "column_names", values_to = "missings_obs") %>% 
-  mutate.(total_missing = missings_obs/total_observations)
-
-drop_column_list <- complete_observations %>% 
-  filter.(total_missing >= 1) %>%  #drop columns that have no observations
-  pull.(column_names) 
-
-ptos_test <- raw_data %>% head(1000) %>% 
-  select.(-any_of.(drop_column_list)) %>% 
-  select.(1:30)
-
-
-
-
-```
-
-```{r}
-
-#source("01 - Classification Functions.R")
-
-
-# rename_function <- function(ptos_data) {
-#   new_df <- ptos_data
-#   
-for(i in colnames(ptos_test)){
-
-  old_col_name <- names(ptos_test[,..i])
-  new_col_name <- case.(old_col_name == 'state_pa', 'STATE',
-                        default = old_col_name)
-
-  setnames(ptos_test[,..i], old_col_name, new_col_name)
-}
-# 
-#   return(new_df)
-# }
-#   
-# new_ptos <- rename_function(ptos_test)
-# new_ptos
-
-ptos_test <- raw_data %>% head(1000) %>% 
-  select.(-any_of.(drop_column_list)) %>% 
-  select.(1:5)
-
-
-rename_function <- function(.data) {
-  
-  for(i in 1:length(colnames(.data))){
-    new_data <- .data
-    
-    old_names <- as.character(names(.data))
-    new_names <- case.(old_names == 'alias_inst_num', 'YES_FINALLY',
-                       old_names == 'trauma_num', 'DRAMA', 
-                       old_names == 'e_code', 'Super_CODE',
-                       default = old_names)
-    
-    new_data <- setnames(.data, old_names, as.character(new_names))
-    
-  }
-  .data
-  #old_names
-  
-  
-}
-
-ptos_test <- raw_data %>% head(1000) %>% 
-  select.(-any_of.(drop_column_list)) %>% 
-  select.(1:5)
-
-
-rename_function(ptos_test)
-
-
-source("01 - Classification Functions.R")
-
-ptos_test_new <- raw_data %>%  
-  select.(-any_of.(drop_column_list)) 
-
-
-ptos_test_new %>% ptos_rename_columns()
-
-
-
-ptos_test_new %>% head(10) %>% view()
-
-
-```
-
-
-
-
-
 ```{r manual_lists}
 
 #Forearm Surgical Procedures
@@ -178,9 +81,24 @@ forearm_fx_list <- paste(seq(from = 813.00, to = 813.99, by = 0.01), collapse = 
 ```
 
 
-
 ## Drop Columns
 Decided to remove any columns that only contain NA or NULL values to assist reducing the size of data. 
+
+
+```{r new_drop_columns}
+
+ptos_df <- create_ptos_data(raw_data)
+
+
+tidytable::inv_gc()
+
+rm(complete_observations)
+
+```
+
+
+
+
 
 ```{r drop_columns}
 
@@ -198,6 +116,10 @@ complete_observations <- map_dfc.(raw_data, ~sum(is.na(.))) %>%
 drop_column_list <- complete_observations %>% 
   filter.(total_missing >= 1) %>%  #drop columns that have no observations
   pull.(column_names) 
+
+
+message(paste("Dropping a few columns here... ", length(drop_column_list), "to be exact" ))
+
 
 pto_df <- raw_data %>% 
   select.(-any_of.(drop_column_list)) %>%
