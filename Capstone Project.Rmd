@@ -8,6 +8,9 @@ date: "4/11/2020"
 
 # devtools::install_github("markfairbanks/tidytable")
 # devtools::install_github("ultramattyice/ptos")
+# devtools::install_github("Rdatatable/data.table")
+
+
 
 pacman::p_load( tidyverse, 
                 fpp3, 
@@ -38,9 +41,15 @@ knitr::opts_chunk$set(echo = FALSE)
 
 tic()
 
-raw_data <- fread("E:/Northwestern/12 - Capstone/PTOS_Data.csv", na.strings = c("<unk>", "", "<n/a>")) %>%  
-  as.data.table() %>% 
-  clean_names()
+# raw_data <- fread("E:/Northwestern/12 - Capstone/PTOS_Data.csv", na.strings = c("<unk>", "", "<n/a>")) %>%  
+#   as.data.table() #%>%   clean_names()
+
+
+raw_data <- fread("E:/Northwestern/12 - Capstone/PTOS_Data_toy.csv", na.strings = c("<unk>", "", "<n/a>")) %>%  
+  as.data.table() #%>%   clean_names()
+
+
+
 
 icd_data <- fread("E:/Northwestern/12 - Capstone/ICD9_Data.csv") %>%  
   as.data.table() %>% 
@@ -90,9 +99,40 @@ Decided to remove any columns that only contain NA or NULL values to assist redu
 ptos_df <- create_ptos_data(raw_data)
 
 
-tidytable::inv_gc()
+ptos_df %>% select.(starts_with.("ref_"))
 
-rm(complete_observations)
+
+
+
+diagnosis_data <- function(.data) {
+
+  diag_df <- .data %>%
+    select.(id, ref_ar_d_a, ref_ar_t_a, starts_with.('icd9_')) %>%
+    pivot_longer.(cols = -c(id, ref_ar_d_a, ref_ar_t_a),
+                  values_to = "code",
+                  values_drop_na = TRUE
+    ) %>%
+    separate.(name, into = c("type", "serial"), sep = "_") %>%
+    mutate.(code = as.double(code),
+            code_desc = map_chr.(code, ~procedure(code))) %>%
+    rename.(date = ref_ar_d_a,
+            time = ref_ar_t_a)
+    select(id, date, time, code, code_desc)
+
+  return(.data)
+}
+
+diag_test <- diagnosis_data(ptos_df)
+
+
+ptos_df %>%
+    select.(id, ref_ar_d_a, ref_ar_t_a, starts_with.('icd9_')) %>%
+    pivot_longer.(cols = c(-id, ref_ar_d_a, ref_ar_t_a),
+                  values_to = "code",
+                  values_drop_na = TRUE
+    ) 
+
+
 
 ```
 
@@ -116,7 +156,6 @@ complete_observations <- map_dfc.(raw_data, ~sum(is.na(.))) %>%
 drop_column_list <- complete_observations %>% 
   filter.(total_missing >= 1) %>%  #drop columns that have no observations
   pull.(column_names) 
-
 
 message(paste("Dropping a few columns here... ", length(drop_column_list), "to be exact" ))
 
