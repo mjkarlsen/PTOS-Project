@@ -8,24 +8,24 @@ date: "4/11/2020"
 
 # devtools::install_github("markfairbanks/tidytable")
 # devtools::install_github("ultramattyice/ptos")
-# devtools::install_github("Rdatatable/data.table")
 
 
 
-pacman::p_load( tidyverse, 
+
+pacman::p_load( tidytable, 
+                data.table, 
+                janitor, 
+                broom, 
+                tidyverse, 
                 fpp3, 
                 lubridate, 
                 DataExplorer, 
-                janitor, 
-                broom, 
                 gt, 
                 ggthemes,
-                data.table,
-                tidytable, 
-                tictoc, 
-                tidystringdist, 
-                ptos
-                )
+                tictoc , 
+                ptos 
+                # tidystringdist, 
+)
 
 options(scipen=999)  #remove scientific notation
 knitr::opts_chunk$set(warning = FALSE)
@@ -35,6 +35,118 @@ knitr::opts_chunk$set(fig.height = 10)
 knitr::opts_chunk$set(echo = FALSE)
 
 ```
+
+```{r message=TRUE}
+
+raw_data <- fread("E:/Northwestern/12 - Capstone/PTOS_Data_toy.csv", na.strings = c("<unk>", "", "<n/a>")) %>%  
+  as.data.table() 
+
+
+
+tic()
+ptos::run_full_show(raw_data)
+toc()
+
+
+patient_df
+
+
+trans_full_test <- ptos::create_full_trans(ptos_df)
+trans_flat_test <- ptos::create_flat_trans(trans_full_test)
+
+
+create_full_trans <- function(.data){
+
+  .proc_df <- create_proc_df(.data)
+  .diag_df <- create_diag_df(.data)
+  .comp_df <- create_complic_df(.data)
+
+  # Row Bind all the transaction data together
+  .full_trans <- rbind.data.frame(.proc_df, .diag_df)
+  .full_trans <- rbind.data.frame(.full_trans, .comp_df)
+
+  .full_trans <- .full_trans %>%
+    arrange.(id, date)
+
+  #return(.full_trans)
+
+  assign(paste("trans_full_df"), data.frame(.full_trans), envir = .GlobalEnv)
+
+}
+
+create_full_trans(ptos_df)
+
+
+create_flat_trans <- function(.full_trans) {
+  # list('79.02', '79.12', '79.22', '79.32') #forearm surgery
+  # paste(seq(from = 813.00, to = 813.99, by = 0.01), collapse = "|") #diagnosis for forearm fx
+
+  .flat_trans <- .full_trans %>%
+    summarize.(code_cd = paste(code_cd, collapse = " "),
+      code_desc = paste(code_desc, collapse = ", "),
+      by = c(id, data_source)
+      ) %>%
+    pivot_wider.(names_from = data_source,
+                 values_from = c(code_cd, code_desc)) %>%
+    drop_na.() %>%
+    mutate.(fltr_diagnosis = str_detect(code_cd_diagnosis, #diagnosis for forearm fx
+                                  pattern = paste(seq(from = 813.00, to = 813.99, by = 0.01), collapse = "|")),
+            fltr_procedure = str_detect(code_cd_procedure,
+                                  pattern = list('79.02', '79.12', '79.22', '79.32')),#forearm surgery
+            fltr_complication = str_detect(code_cd_complication,
+                                            pattern = '32'),
+            fltr_fasciotomy = str_detect(code_cd_procedure,
+                                         pattern = '83.14'))
+
+  assign(paste("trans_flat_df"), data.frame(.flat_trans), envir = .GlobalEnv)
+}
+
+create_flat_trans(trans_full_df)
+
+```
+
+
+```{r}
+test_full_run <- function(.data) {
+
+  is_data_table <- is.data.table(.data)
+  data_class <- class(.data)
+  if (!is.data.table(.data)) .data <- data.table(.data)
+  knitr::opts_chunk$set(message = TRUE)
+  tidytable::inv_gc()
+
+
+  ## Create PTOS Dataframe
+  message("Creating PTOS Data")
+  .ptos_df <- create_ptos_data(.data)
+
+  ## Create Transactional Dataframes
+  message("Creating Full Transactional Data")
+  .trans_full <- create_full_trans(.ptos_df)
+  message("Creating Flat Transactional Data")
+  .trans_flat <- create_flat_trans(.trans_full)
+
+
+  ## Create Patient Dataframe
+  message("Creating Patient Data")
+  create_patient_df(.ptos_df, .trans_flat, .trans_full)
+
+
+  message("Complete!")
+
+
+}
+
+
+test_full_run(raw_data)
+
+ptos_df %>% select.(id, starts_with.("proc_"))
+
+
+```
+
+
+
 
 ## Load Multiple Data Sources
 ```{r load_data}
@@ -50,26 +162,26 @@ raw_data <- fread("E:/Northwestern/12 - Capstone/PTOS_Data_toy.csv", na.strings 
 
 
 
-
-icd_data <- fread("E:/Northwestern/12 - Capstone/ICD9_Data.csv") %>%  
-  as.data.table() %>% 
-  clean_names() %>% 
-  mutate.(proc_code = as.double(proc_code)) %>% 
-  rename.(procedure_desc = long_desc) %>% 
-  select.(-org_proc_code)
-
-injury_data <- fread("E:/Northwestern/12 - Capstone/ecode_data.csv") %>%  
-  as.data.table() %>% 
-  clean_names() %>% 
-  mutate.(e_code = as.character(e_code)) %>% 
-  rename.(injury_desc_short = short_desc, 
-          injury_desc_long = long_desc) %>% 
-  select.(-diagnosis_code)
-
-diagnosis_data <- fread("E:/Northwestern/12 - Capstone/diagnosis_data.csv") %>%  
-  as.data.table() %>% 
-  clean_names() %>% 
-  mutate.(diag_code = as.double(diag_code))
+# 
+# icd_data <- fread("E:/Northwestern/12 - Capstone/ICD9_Data.csv") %>%  
+#   as.data.table() %>% 
+#   clean_names() %>% 
+#   mutate.(proc_code = as.double(proc_code)) %>% 
+#   rename.(procedure_desc = long_desc) %>% 
+#   select.(-org_proc_code)
+# 
+# injury_data <- fread("E:/Northwestern/12 - Capstone/ecode_data.csv") %>%  
+#   as.data.table() %>% 
+#   clean_names() %>% 
+#   mutate.(e_code = as.character(e_code)) %>% 
+#   rename.(injury_desc_short = short_desc, 
+#           injury_desc_long = long_desc) %>% 
+#   select.(-diagnosis_code)
+# 
+# diagnosis_data <- fread("E:/Northwestern/12 - Capstone/diagnosis_data.csv") %>%  
+#   as.data.table() %>% 
+#   clean_names() %>% 
+#   mutate.(diag_code = as.double(diag_code))
 
 toc()
 
@@ -77,6 +189,60 @@ toc()
 #PC - 41.68 sec elapsed
 
 ```
+
+# Use PTOS Package to Cleanup Raw Data
+
+```{r ptos_pkg_results, message=TRUE}
+# ptos_df <- create_ptos_data(raw_data)
+# 
+# create_full_trans(ptos_df)
+# create_flat_trans(trans_full_df)
+
+
+rm('patient_df')
+rm('ptos_df') 
+rm('trans_flat_df') 
+rm('trans_full_df')
+rm('trans_full_test')
+rm('create_flat_trans')
+rm('create_full_trans')
+
+tic()
+ptos::run_full_show(raw_data)
+toc()
+
+
+patient_df
+
+# fasciotomy_proc_df <- trans_full_df %>% 
+#   filter.(code_cd == '83.14') %>% 
+#   arrange.(id, date, time) %>% 
+#   group_by(id) %>% 
+#   arrange(date, time) %>% 
+#   slice(1) %>% 
+#   select.(id, date, time, loc_desc, code_cd, code_desc) %>% 
+#   rename.(fasciotomy_dt = date, 
+#           fasciotomy_time = time, 
+#           fasciotomy_loc = loc_desc, 
+#           fasciotomy_cd = code_cd, 
+#           fasciotomy_desc = code_desc)
+# 
+# forearm_proc_df <- trans_full_df %>% 
+#   filter.(code_cd %in% list('79.02', '79.12', '79.22', '79.32')) %>% 
+#   arrange.(id, date, time) %>% 
+#   group_by(id) %>% 
+#   arrange(date, time) %>% 
+#   slice(1) %>% 
+#   select.(id, date, time, loc_desc, code_cd, code_desc) %>% 
+#   rename.(forearm_fx_dt = date, 
+#           forearm_fx_time = time, 
+#           forearm_fx_loc = loc_desc, 
+#           forearm_fx_cd = code_cd, 
+#           forearm_fx_desc = code_desc)
+
+
+```
+
 
 
 ```{r manual_lists}
@@ -90,6 +256,45 @@ forearm_fx_list <- paste(seq(from = 813.00, to = 813.99, by = 0.01), collapse = 
 ```
 
 
+```{r}
+full_trans_test %>% 
+  summarize.(code_cd = paste(code_cd, collapse = " "),
+             code_desc = paste(code_desc, collapse = ", "),
+             by = c(id, data_source)) %>% 
+  pivot_wider.(names_from = data_source, values_from = c(code_cd, code_desc)) %>% 
+  drop_na.() %>% 
+  mutate.(fltr_diagnosis = str_detect(code_cd_diagnosis, pattern = forearm_fx_list), 
+          fltr_procedure = str_detect(code_cd_procedure, pattern = forearm_proc_list), 
+          fltr_fasciotomy = str_detect(code_cd_procedure, pattern = '83.14'), 
+          filtr_complication = str_detect(code_cd_complications, pattern = '32')) 
+
+
+
+
+
+
+  proc_codes <-  list('79.02', '79.12', '79.22', '79.32') #forearm surgery
+  diag_codes <-  paste(seq(from = 813.00, to = 813.99, by = 0.01), collapse = "|") #diagnosis for forearm fx
+
+  .flat_trans <- .full_trans %>%
+    summarize.(code_cd = paste(code_cd, collapse = " "),
+               code_desc = paste(code_desc, collapse = ", "),
+               by = c(id, data_source)) %>%
+    pivot_wider.(names_from = data_source, values_from = c(code_cd, code_desc)) %>%
+    drop_na.() %>%
+    mutate.(fltr_diagnosis = str_detect(code_cd_diagnosis, pattern = diag_codes),
+            fltr_procedure = str_detect(code_cd_procedure, pattern = proc_codes),
+            filtr_complication = str_detect(code_cd_complications, pattern = '32'),
+            fltr_fasciotomy = str_detect(code_cd_procedure, pattern = '83.14'))
+
+  assign(paste("trans_flat_df"), data.frame(.full_trans), envir = .GlobalEnv)
+  
+rm(diag_codes)
+
+```
+
+
+
 ## Drop Columns
 Decided to remove any columns that only contain NA or NULL values to assist reducing the size of data. 
 
@@ -99,30 +304,36 @@ Decided to remove any columns that only contain NA or NULL values to assist redu
 ptos_df <- create_ptos_data(raw_data)
 
 
-ptos_df %>% select.(starts_with.("ref_"))
+create_full_trans(ptos_df)
+create_flat_trans(trans_full_df)
 
 
 
+create_diag_df <- function(.data) {
 
-diagnosis_data <- function(.data) {
-
-  diag_df <- .data %>%
+  .data <- .data %>%
     select.(id, ref_ar_d_a, ref_ar_t_a, starts_with.('icd9_')) %>%
     pivot_longer.(cols = -c(id, ref_ar_d_a, ref_ar_t_a),
                   values_to = "code",
                   values_drop_na = TRUE
     ) %>%
     separate.(name, into = c("type", "serial"), sep = "_") %>%
-    mutate.(code = as.double(code),
-            code_desc = map_chr.(code, ~procedure(code))) %>%
+    mutate.(diag_code = as.double(code)) %>%
+    left_join.(diagnosis_data, by = "diag_code") %>%
     rename.(date = ref_ar_d_a,
-            time = ref_ar_t_a)
-    select(id, date, time, code, code_desc)
+            time = ref_ar_t_a,
+            code_cd = diag_code,
+            code_desc = short_desc) %>% 
+    select.(id, date, time, code_cd, code_desc)
 
   return(.data)
 }
 
-diag_test <- diagnosis_data(ptos_df)
+
+diag_test <- create_diag_df(ptos_df)
+
+diag_test %>% head(10) %>% view()
+
 
 
 ptos_df %>%
@@ -340,7 +551,82 @@ fx_patients <- diagnosis_flat_df %>%
 ## Diagnosis Results
 ### Only pull results from Forearm Fractures
 
+
+
+
+
+
 ```{r diagnosis_data}
+
+
+test_diag <- create_diag_df(ptos_df)
+full_trans_test <- create_full_trans(ptos_df)
+
+
+full_trans_test %>% 
+  summarize.(code_cd = paste(code_cd, collapse = " "),
+             code_desc = paste(code_desc, collapse = ", "),
+             by = c(id, data_source)) %>% 
+  pivot_wider.(names_from = data_source, values_from = c(code_cd, code_desc))
+  mutate.(fltr_diagnosis = str_detect(diagnosis_codes, pattern = forearm_fx_list)) %>% 
+  select.(id, fltr_diagnosis, diagnosis_codes, diagnosis_desc) 
+
+
+
+
+test_create_diag_df <- function(.data) {
+  .data <- .data %>%
+    select.(id,
+            ref_ar_d_a,
+            ref_ar_t_a,
+            starts_with.('icd9_')) %>%
+    pivot_longer.(
+      cols = -c(id, ref_ar_d_a, ref_ar_t_a),
+      values_to = "code",
+      values_drop_na = TRUE
+    ) %>%
+    separate.(name, into = c("type", "serial"), sep = "_") %>%
+    mutate.(diag_code = as.double(code),
+            loc_desc = "Diagnosis",
+            data_source = "diagnosis") %>%
+    left_join.(diagnosis_data, by = "diag_code") %>%
+    rename.(
+      date = ref_ar_d_a,
+      time = ref_ar_t_a,
+      code_cd = diag_code,
+      code_desc = short_desc
+    ) %>%
+    select.(id, date, time, loc_desc, code_cd, code_desc, data_source) %>%
+    filter.(!is.na(code_cd))
+
+  return(.data)
+}
+
+test_create_diag_df(ptos_df)
+
+ptos_df %>%
+    select.(id,
+            ref_ar_d_a,
+            ref_ar_t_a,
+            starts_with.('icd9_')) %>%
+    pivot_longer.(
+      cols = -c(id, ref_ar_d_a, ref_ar_t_a),
+      values_to = "code",
+      values_drop_na = TRUE
+    ) %>%
+    separate.(name, into = c("type", "serial"), sep = "_") %>%
+    mutate.(diag_code = as.double(code),
+            loc_desc = "Diagnosis",
+            data_source = "diagnosis") %>%
+    left_join.(diagnosis_data, by = "diag_code") %>%
+    rename.(
+      date = ref_ar_d_a,
+      time = ref_ar_t_a,
+      code_cd = diag_code,
+      code_desc = short_desc
+    ) %>%
+    select.(id, date, time, loc_desc, code_cd, code_desc, data_source) %>%
+    filter.(!is.na(code_cd))
 
 #NORMALIZE ALL DIAGNOSIS RESULTS BY PATIENT ID
 diagnosis_full_df <- pto_df %>% 
@@ -407,9 +693,12 @@ complications_flat_df <- complications_full_df %>%
 
 ```
 
+
+
 ## Procedure Results
 
 ```{r procedures_data}
+
 
 procedures_full_df <- pto_df %>% 
   select.(id, starts_with.('proc_')) %>% 
