@@ -9,7 +9,7 @@ date: "4/11/2020"
 # devtools::install_github("markfairbanks/tidytable")
 # devtools::install_github("ultramattyice/traumaR")
 
-pacman::p_load( traumaR
+pacman::p_load( traumaR,
                 # tidytable, 
                 # data.table, 
                 janitor, 
@@ -31,7 +31,6 @@ knitr::opts_chunk$set(message = FALSE)
 knitr::opts_chunk$set(fig.width = 12)
 knitr::opts_chunk$set(fig.height = 10)
 knitr::opts_chunk$set(echo = FALSE)
-knitr::opts_chunk$set(paged.print=FALSE)
 
 ```
 
@@ -64,54 +63,82 @@ traumaR::run_full_show(raw_data)
 
 # Let's clean up the transactional data
 
-```{r data_for_analysis}
+```{r data_for_analysis, paged.print=TRUE}
 
 trans_full_df %>% 
-  filter.(id == '0101188020001731')
+  filter.(id == '0616196020000001')
 
 patient_df %>% 
-  filter.(id == '0101188020001731')
+  filter.(id == '0616196020000001')
+
+```
 
 
 
-create_injury_df <- function(.data){
+```{r}
+patient_df %>% 
+  # filter.(fltr_procedure == T, 
+  #         fltr_fasciotomy == T) %>%  
+  select.(id, ends_with.("_dt"), starts_with.("fltr_")) %>% 
+  filter.(id == '0616196020000001') 
 
-  .data %>%
-    select.(id, inj_date_a, inj_time_a, e849_x, e_code) %>% 
-    mutate.(date = ifelse(!is.na(inj_date_a), as.character(inj_date_a), NULL),
-            time =  ifelse(!is.na(inj_time_a), as.character(inj_time_a), NULL),
-            loc_desc = injury_loc(e849_x),
-            code_cd = e_code,
-            code_desc = e_code(e_code),
-            data_source = "injury") %>% 
-    select.(id, date, time, loc_desc, code_cd, code_desc, data_source) %>% 
-    slice.(1, by = id)
+```
 
+```{r}
+create_flat_test <- function(.full_trans) {
 
+  forearm_surgery <- c('79.02', '79.12', '79.22', '79.32') #forearm surgery
+  forearm_diag <- c(seq(from = 813.00, to = 813.99, by = 0.01)) #diagnosis for forearm fx
+
+  .flat_trans <- .full_trans %>%
+    filter.(data_source != 'injury') %>%
+    summarize.(code_cd = paste(code_cd, collapse = " "),
+               code_desc = paste(code_desc, collapse = ", "),
+               by = c(id, data_source)
+    ) %>%
+    pivot_wider.(names_from = data_source,
+                 values_from = c(code_cd, code_desc)) %>%
+    drop_na.() %>%
+    mutate.(fltr_diagnosis = (str_detect(code_cd_diagnosis, #diagnosis for forearm fx
+                                            pattern = !!forearm_diag)),
+            fltr_procedure = (str_detect(code_cd_procedure,
+                                            pattern = !!forearm_surgery)),#forearm surgery
+            fltr_complication = str_detect(code_cd_complication,
+                                           pattern = '32'),
+            fltr_fasciotomy = str_detect(code_cd_procedure,
+                                         pattern = '83.14'))
+
+  assign(paste("trans_flat_df_test"), data.frame(.flat_trans), envir = .GlobalEnv)
 }
 
+create_flat_test(trans_full_df)
 
-create_injury_df(ptos_df)
-
-
-ptos_df %>% 
-  select.(id, inj_date_a, inj_time_a, e849_x, e_code) %>% 
-   mutate.(date = ifelse(!is.na(inj_date_a), as.character(inj_date_a), NULL),
-            time =  ifelse(!is.na(inj_time_a), as.character(inj_time_a), NULL),
-            loc_desc = injury_loc(e849_x),
-            code_cd = e_code,
-            code_desc = e_code(e_code),
-            data_source = "injury") %>% 
-  select.(id, date, time, loc_desc, code_cd, code_desc, data_source) %>% 
-  slice.(1, by = id)
-
-  
+trans_flat_df_test %>% 
+    filter.(id == '0616196020000001') %>% 
+  select.(id, ends_with.("_dt"), starts_with.("fltr_")) 
 
 
 ```
 
 
 
+
+
+```{r}
+trans_full_df %>% 
+  filter.(id == '0616196020000001') %>% 
+  create_flat_trans()
+
+
+create_patient_df(ptos_df %>% 
+                    filter.(id == '0616196020000001'), 
+                  trans_flat_df %>%
+                    filter.(id == '0616196020000001'), 
+                  trans_full_df %>% 
+                    filter.(id == '0616196020000001'))
+
+patient_df
+```
 
 
 
