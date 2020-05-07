@@ -7,13 +7,11 @@ date: "4/11/2020"
 ```{r, setup}
 
 # devtools::install_github("markfairbanks/tidytable")
-# devtools::install_github("ultramattyice/ptos")
+# devtools::install_github("ultramattyice/traumaR")
 
-
-
-
-pacman::p_load( tidytable, 
-                data.table, 
+pacman::p_load( traumaR
+                # tidytable, 
+                # data.table, 
                 janitor, 
                 broom, 
                 tidyverse, 
@@ -22,8 +20,8 @@ pacman::p_load( tidytable,
                 DataExplorer, 
                 gt, 
                 ggthemes,
-                tictoc , 
-                ptos 
+                tictoc 
+                 
                 # tidystringdist, 
 )
 
@@ -33,886 +31,81 @@ knitr::opts_chunk$set(message = FALSE)
 knitr::opts_chunk$set(fig.width = 12)
 knitr::opts_chunk$set(fig.height = 10)
 knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(paged.print=FALSE)
 
 ```
+
+# Data Preparation with traumaR
+* Created a R Library called [traumaR](https://github.com/ultramattyice/traumaR) to consolidate all of the data manipulation 
+
+
+## Drop Columns
+Decided to remove any columns that only contain NA or NULL values to assist reducing the size of data. 
+
+## Diagnosis Results
+### Only pull results from Forearm Fractures
+
+
+## Complications Results
+### Only pull results from Forearm Fractures
+
 
 ```{r message=TRUE}
 
 raw_data <- fread("E:/Northwestern/12 - Capstone/PTOS_Data_toy.csv", na.strings = c("<unk>", "", "<n/a>")) %>%  
   as.data.table() 
 
+#example data for traumaR package
+#data.table::fwrite(raw_data %>% head(30000), file = "E:/Northwestern/12 - Capstone/PTOS_Toy.csv")
 
-
-tic()
-ptos::run_full_show(raw_data)
-toc()
-
-
-patient_df
-
-
-trans_full_test <- ptos::create_full_trans(ptos_df)
-trans_flat_test <- ptos::create_flat_trans(trans_full_test)
-
-
-create_full_trans <- function(.data){
-
-  .proc_df <- create_proc_df(.data)
-  .diag_df <- create_diag_df(.data)
-  .comp_df <- create_complic_df(.data)
-
-  # Row Bind all the transaction data together
-  .full_trans <- rbind.data.frame(.proc_df, .diag_df)
-  .full_trans <- rbind.data.frame(.full_trans, .comp_df)
-
-  .full_trans <- .full_trans %>%
-    arrange.(id, date)
-
-  #return(.full_trans)
-
-  assign(paste("trans_full_df"), data.frame(.full_trans), envir = .GlobalEnv)
-
-}
-
-create_full_trans(ptos_df)
-
-
-create_flat_trans <- function(.full_trans) {
-  # list('79.02', '79.12', '79.22', '79.32') #forearm surgery
-  # paste(seq(from = 813.00, to = 813.99, by = 0.01), collapse = "|") #diagnosis for forearm fx
-
-  .flat_trans <- .full_trans %>%
-    summarize.(code_cd = paste(code_cd, collapse = " "),
-      code_desc = paste(code_desc, collapse = ", "),
-      by = c(id, data_source)
-      ) %>%
-    pivot_wider.(names_from = data_source,
-                 values_from = c(code_cd, code_desc)) %>%
-    drop_na.() %>%
-    mutate.(fltr_diagnosis = str_detect(code_cd_diagnosis, #diagnosis for forearm fx
-                                  pattern = paste(seq(from = 813.00, to = 813.99, by = 0.01), collapse = "|")),
-            fltr_procedure = str_detect(code_cd_procedure,
-                                  pattern = list('79.02', '79.12', '79.22', '79.32')),#forearm surgery
-            fltr_complication = str_detect(code_cd_complication,
-                                            pattern = '32'),
-            fltr_fasciotomy = str_detect(code_cd_procedure,
-                                         pattern = '83.14'))
-
-  assign(paste("trans_flat_df"), data.frame(.flat_trans), envir = .GlobalEnv)
-}
-
-create_flat_trans(trans_full_df)
+traumaR::run_full_show(raw_data)
 
 ```
 
-
-```{r}
-test_full_run <- function(.data) {
-
-  is_data_table <- is.data.table(.data)
-  data_class <- class(.data)
-  if (!is.data.table(.data)) .data <- data.table(.data)
-  knitr::opts_chunk$set(message = TRUE)
-  tidytable::inv_gc()
-
-
-  ## Create PTOS Dataframe
-  message("Creating PTOS Data")
-  .ptos_df <- create_ptos_data(.data)
-
-  ## Create Transactional Dataframes
-  message("Creating Full Transactional Data")
-  .trans_full <- create_full_trans(.ptos_df)
-  message("Creating Flat Transactional Data")
-  .trans_flat <- create_flat_trans(.trans_full)
-
-
-  ## Create Patient Dataframe
-  message("Creating Patient Data")
-  create_patient_df(.ptos_df, .trans_flat, .trans_full)
-
-
-  message("Complete!")
-
-
-}
-
-
-test_full_run(raw_data)
-
-ptos_df %>% select.(id, starts_with.("proc_"))
-
-
-```
-
-
-
-
-## Load Multiple Data Sources
-```{r load_data}
-
-tic()
-
-# raw_data <- fread("E:/Northwestern/12 - Capstone/PTOS_Data.csv", na.strings = c("<unk>", "", "<n/a>")) %>%  
-#   as.data.table() #%>%   clean_names()
-
-
-raw_data <- fread("E:/Northwestern/12 - Capstone/PTOS_Data_toy.csv", na.strings = c("<unk>", "", "<n/a>")) %>%  
-  as.data.table() #%>%   clean_names()
-
-
-
-# 
-# icd_data <- fread("E:/Northwestern/12 - Capstone/ICD9_Data.csv") %>%  
-#   as.data.table() %>% 
-#   clean_names() %>% 
-#   mutate.(proc_code = as.double(proc_code)) %>% 
-#   rename.(procedure_desc = long_desc) %>% 
-#   select.(-org_proc_code)
-# 
-# injury_data <- fread("E:/Northwestern/12 - Capstone/ecode_data.csv") %>%  
-#   as.data.table() %>% 
-#   clean_names() %>% 
-#   mutate.(e_code = as.character(e_code)) %>% 
-#   rename.(injury_desc_short = short_desc, 
-#           injury_desc_long = long_desc) %>% 
-#   select.(-diagnosis_code)
-# 
-# diagnosis_data <- fread("E:/Northwestern/12 - Capstone/diagnosis_data.csv") %>%  
-#   as.data.table() %>% 
-#   clean_names() %>% 
-#   mutate.(diag_code = as.double(diag_code))
-
-toc()
-
-#AWS - 54.111 sec elapsed
-#PC - 41.68 sec elapsed
-
-```
-
-# Use PTOS Package to Cleanup Raw Data
-
-```{r ptos_pkg_results, message=TRUE}
-# ptos_df <- create_ptos_data(raw_data)
-# 
-# create_full_trans(ptos_df)
-# create_flat_trans(trans_full_df)
-
-
-rm('patient_df')
-rm('ptos_df') 
-rm('trans_flat_df') 
-rm('trans_full_df')
-rm('trans_full_test')
-rm('create_flat_trans')
-rm('create_full_trans')
-
-tic()
-ptos::run_full_show(raw_data)
-toc()
-
-
-patient_df
-
-# fasciotomy_proc_df <- trans_full_df %>% 
-#   filter.(code_cd == '83.14') %>% 
-#   arrange.(id, date, time) %>% 
-#   group_by(id) %>% 
-#   arrange(date, time) %>% 
-#   slice(1) %>% 
-#   select.(id, date, time, loc_desc, code_cd, code_desc) %>% 
-#   rename.(fasciotomy_dt = date, 
-#           fasciotomy_time = time, 
-#           fasciotomy_loc = loc_desc, 
-#           fasciotomy_cd = code_cd, 
-#           fasciotomy_desc = code_desc)
-# 
-# forearm_proc_df <- trans_full_df %>% 
-#   filter.(code_cd %in% list('79.02', '79.12', '79.22', '79.32')) %>% 
-#   arrange.(id, date, time) %>% 
-#   group_by(id) %>% 
-#   arrange(date, time) %>% 
-#   slice(1) %>% 
-#   select.(id, date, time, loc_desc, code_cd, code_desc) %>% 
-#   rename.(forearm_fx_dt = date, 
-#           forearm_fx_time = time, 
-#           forearm_fx_loc = loc_desc, 
-#           forearm_fx_cd = code_cd, 
-#           forearm_fx_desc = code_desc)
-
-
-```
-
-
-
-```{r manual_lists}
-
-#Forearm Surgical Procedures
-forearm_proc_list <- list('79.02', '79.12', '79.22', '79.32')
-
-#DIAGNOSIS RANGES FOR FOREARM FRACTURES 
-forearm_fx_list <- paste(seq(from = 813.00, to = 813.99, by = 0.01), collapse = "|")
-
-```
-
-
-```{r}
-full_trans_test %>% 
-  summarize.(code_cd = paste(code_cd, collapse = " "),
-             code_desc = paste(code_desc, collapse = ", "),
-             by = c(id, data_source)) %>% 
-  pivot_wider.(names_from = data_source, values_from = c(code_cd, code_desc)) %>% 
-  drop_na.() %>% 
-  mutate.(fltr_diagnosis = str_detect(code_cd_diagnosis, pattern = forearm_fx_list), 
-          fltr_procedure = str_detect(code_cd_procedure, pattern = forearm_proc_list), 
-          fltr_fasciotomy = str_detect(code_cd_procedure, pattern = '83.14'), 
-          filtr_complication = str_detect(code_cd_complications, pattern = '32')) 
-
-
-
-
-
-
-  proc_codes <-  list('79.02', '79.12', '79.22', '79.32') #forearm surgery
-  diag_codes <-  paste(seq(from = 813.00, to = 813.99, by = 0.01), collapse = "|") #diagnosis for forearm fx
-
-  .flat_trans <- .full_trans %>%
-    summarize.(code_cd = paste(code_cd, collapse = " "),
-               code_desc = paste(code_desc, collapse = ", "),
-               by = c(id, data_source)) %>%
-    pivot_wider.(names_from = data_source, values_from = c(code_cd, code_desc)) %>%
-    drop_na.() %>%
-    mutate.(fltr_diagnosis = str_detect(code_cd_diagnosis, pattern = diag_codes),
-            fltr_procedure = str_detect(code_cd_procedure, pattern = proc_codes),
-            filtr_complication = str_detect(code_cd_complications, pattern = '32'),
-            fltr_fasciotomy = str_detect(code_cd_procedure, pattern = '83.14'))
-
-  assign(paste("trans_flat_df"), data.frame(.full_trans), envir = .GlobalEnv)
-  
-rm(diag_codes)
-
-```
-
-
-
-## Drop Columns
-Decided to remove any columns that only contain NA or NULL values to assist reducing the size of data. 
-
-
-```{r new_drop_columns}
-
-ptos_df <- create_ptos_data(raw_data)
-
-
-create_full_trans(ptos_df)
-create_flat_trans(trans_full_df)
-
-
-
-create_diag_df <- function(.data) {
-
-  .data <- .data %>%
-    select.(id, ref_ar_d_a, ref_ar_t_a, starts_with.('icd9_')) %>%
-    pivot_longer.(cols = -c(id, ref_ar_d_a, ref_ar_t_a),
-                  values_to = "code",
-                  values_drop_na = TRUE
-    ) %>%
-    separate.(name, into = c("type", "serial"), sep = "_") %>%
-    mutate.(diag_code = as.double(code)) %>%
-    left_join.(diagnosis_data, by = "diag_code") %>%
-    rename.(date = ref_ar_d_a,
-            time = ref_ar_t_a,
-            code_cd = diag_code,
-            code_desc = short_desc) %>% 
-    select.(id, date, time, code_cd, code_desc)
-
-  return(.data)
-}
-
-
-diag_test <- create_diag_df(ptos_df)
-
-diag_test %>% head(10) %>% view()
-
-
-
-ptos_df %>%
-    select.(id, ref_ar_d_a, ref_ar_t_a, starts_with.('icd9_')) %>%
-    pivot_longer.(cols = c(-id, ref_ar_d_a, ref_ar_t_a),
-                  values_to = "code",
-                  values_drop_na = TRUE
-    ) 
-
-
-
-```
-
-
-
-
-
-```{r drop_columns}
-
-tic()
-
-source("01 - Classification Functions.R")
-
-total_observations <- raw_data %>% summarize.(count = n.()) %>% as.integer()
-
-complete_observations <- map_dfc.(raw_data, ~sum(is.na(.))) %>% 
-  rename_with.(~ sub(".x", "", .x)) %>% 
-  pivot_longer.(cols = everything.(), names_to = "column_names", values_to = "missings_obs") %>% 
-  mutate.(total_missing = missings_obs/total_observations)
-
-drop_column_list <- complete_observations %>% 
-  filter.(total_missing >= 1) %>%  #drop columns that have no observations
-  pull.(column_names) 
-
-message(paste("Dropping a few columns here... ", length(drop_column_list), "to be exact" ))
-
-
-pto_df <- raw_data %>% 
-  select.(-any_of.(drop_column_list)) %>%
-  rename.(trauma_number = trauma_num, 
-          dob = d_birth_a, 
-          age = age_in_yrs, 
-          zip_code = pat_adr_z, 
-          insurance_type = pay_cat1,
-          insurance_1 = pay_cat1_o,
-          injury_type = inj_type,
-
-          # INJURY INFORMATION
-          injury_dt = inj_date_a, 
-          injury_time = inj_time_a, 
-          injury_patient_extricated = extric_s,
-          injury_fall_height = hgt_fall, 
-          injury_location = e849_x,
-
-          # TRANSPORTATION INFORMATION
-          transportion_to_tc = transp_s,
-          transporation_dispatch_dt = pre_1_d_da,
-          transporation_dispatch_time = pre_1_d_ta ,
-          transporation_arrival_dt = pre_1_a_da ,
-          transporation_arrival_time = pre_1_a_ta ,
-          transporation_leave_dt = pre_1_l_da ,
-          transporation_leave_time = pre_1_l_ta ,
-          transportation_life_support = life_p1,
-          transportation_eye_resp = eye_opng_1,
-          transportation_verbal_resp = ver_resp_1,
-          transportation_motor_resp = mot_resp_1,  
-          transportation_pulse = pulse_1,
-          transportation_resp_rate = resp_rat_1,
-          transportation_bloodpressure = sys_bp_1,
-          
-          # REFERRING FACILITY
-          ref_facility_adm_time = ref_ar_t_a,
-          ref_facility_adm_dt = ref_ar_d_a,
-          ref_facility_disc_time = ref_dp_t_a, 
-          ref_facility_disc_dt = ref_dp_d_a, 
-          ref_facility_desc = ref_fac_n, 
-          ref_facility_trans = transp_r, 
-
-          # ADMISSION 
-          # admission_time = ref_ar_t_a, 
-          # admission_dt = ref_ar_d_a,
-          admission_eye_resp = eye_opng_a,
-          admission_verbal_resp = ver_resp_a,
-          admission_motor_resp = mot_resp_a,           
-          admission_pulse = pulse_a,
-          admission_resp_rate = resp_rat_a,
-          admission_bloodpressure = sys_bp_a,
-          admission_weight_kg = weight_kg,
-          admission_temp_c = temp_c, 
-          emergency_dpt_time = eda_time_a, 
-          emergency_dpt_dt = eda_date_a, 
-          attending_surgeon_spec = surg_sp,
-          
-          # DISCHARGE
-          discharge_status = dis_status,
-          discharge_destination = discg_to,
-          discharge_status_feeding = d_disabl_f, 
-          discharge_status_locomotion = d_disabl_l, 
-          discharge_status_expression = d_disabl_e,
-          discharge_status_transfer_mobility = d_disabl_t, 
-          discharge_status_social_interaction = d_disabl_s, 
-          
-          # DATES AND TIMES
-
-          
-  ) %>% 
-  filter.(!is.na(dob) & !is.na(age)) %>% 
-  mutate.(dob = dob_cleanup(age, dob), # ifelse(is.na(dob), as.character(mdy(injury_dt)-years(age)), dob),
-          age = age_cleanup(age, dob, injury_dt), #ifelse(is.na(age) & !is.na(dob), as.double(round(difftime(mdy(injury_dt), mdy(dob), unit="weeks")/52.25,0)),age),
-          id = paste0(str_remove_all(dob, "/"), trauma_number)) %>% 
-    relocate.(id, .before = alias_inst_num) %>% 
-  filter.(age <= 16)
-
-tidytable::inv_gc()
-
-toc()
-#25.36 sec elapsed
-
-tic()
-
-pto_df <- pto_df %>% 
-  mutate.(dob = mdy(dob),
-          e_code = as.character(e_code),
-          #CASE STATEMENTS USING HELPER FUNCTIONS
-          sex = gender_func(sex),
-          race = race_func(race),
-          county_pa = county_func(county_pa),
-          insurance_type = insurance_func(insurance_type), 
-         
-           # INJURY FUNCTIONS
-          injury_fall_height = fall_height_func(injury_fall_height),
-          injury_type = injury_type_func(injury_type),
-          injury_patient_extricated = extricated_func(injury_patient_extricated),
-          injury_location = injury_loc_func(injury_location),
-
-          # TRANSPORTATION
-          transportion_to_tc = transportation_func(transportion_to_tc),
-          transportation_life_support = life_support_func(transportation_life_support), 
-          
-          # TRANSFER PATIENT
-          ref_facility_desc = facility_name_func(ref_facility_desc), 
-          ref_facility_trans = transportation_func(ref_facility_trans), 
-          
-          
-          # ADMISSION
-          admission_eye_resp = eye_resp_func(admission_eye_resp),
-          admission_verbal_resp = verbal_resp_func(admission_verbal_resp),
-          admission_motor_resp = motor_resp_func(admission_motor_resp),
-          # admission_time = ifelse(is.na(admission_time), emergency_dpt_time, admission_time),
-          # admission_dt = ifelse(is.na(admission_dt), emergency_dpt_dt, admission_dt),
-          
-          # PROCEDURES
-          
-          
-          # ARRIVAL FUNCTIONS
-          attending_surgeon_spec = attending_surgeon_func(attending_surgeon_spec),
-          
-          #DISCHARGE FUNCTIONS
-          
-          discharge_status = discharge_status_func(discharge_status), 
-          discharge_destination = discharge_destination_func(discharge_destination)) 
-
-toc()
-
-
-# FREE UP MEMORY AND DROP LARGE DATA 
-# rm("raw_data")
-tidytable::inv_gc()
-
-```
-
-
-```{r referring_facility_diagnosis}
-
-#NORMALIZE ALL DIAGNOSIS RESULTS BY PATIENT ID
-ref_diag_full_df <- pto_df %>% 
-  select.(id, starts_with.('ref_')) %>% 
-  pivot_longer.(cols = -c(id, 
-                          ref_facility_adm_dt, 
-                          ref_facility_adm_time, 
-                          ref_facility_disc_dt, 
-                          ref_facility_disc_time, 
-                          ref_facility_desc),
-                values_to = "proc_code", 
-                values_drop_na = TRUE
-                ) %>% 
-  filter.(str_detect(name, pattern = 'ref_intd')) %>% 
-  mutate.(proc_code = as.double(proc_code)) %>% 
-  left_join.(icd_data, by = "proc_code") %>% 
-  rename.(date = ref_facility_adm_dt, 
-          time = ref_facility_adm_time, 
-          location = ref_facility_desc,
-          code = proc_code, 
-          code_desc_long = procedure_desc, 
-          code_desc_short = short_desc) %>% 
-  select(id, date, time, location, code, code_desc_long, code_desc_short)
-
-# PUT ALL DIAGNOSIS INTO A SINGLE ROW PER PATIENT ID
-diagnosis_flat_df <- diagnosis_full_df %>% 
-  summarize.(diagnosis_codes = paste(diag_code, collapse = " "),
-             diagnosis_desc = paste(short_desc, collapse = ", "),
-             by = c(id)) %>% 
-  mutate.(fltr_diagnosis = str_detect(diagnosis_codes, pattern = forearm_fx_list)) %>% 
-  select.(id, fltr_diagnosis, diagnosis_codes, diagnosis_desc) 
-
-#ONLY PULL PATIENTS THAT HAVE FOREARM FRACTURE
-fx_patients <- diagnosis_flat_df %>% 
-  filter.(fltr_diagnosis == T) %>% 
-  select.(id)
-
-```
-
-
-
-## Diagnosis Results
-### Only pull results from Forearm Fractures
-
-
-
-
-
-
-```{r diagnosis_data}
-
-
-test_diag <- create_diag_df(ptos_df)
-full_trans_test <- create_full_trans(ptos_df)
-
-
-full_trans_test %>% 
-  summarize.(code_cd = paste(code_cd, collapse = " "),
-             code_desc = paste(code_desc, collapse = ", "),
-             by = c(id, data_source)) %>% 
-  pivot_wider.(names_from = data_source, values_from = c(code_cd, code_desc))
-  mutate.(fltr_diagnosis = str_detect(diagnosis_codes, pattern = forearm_fx_list)) %>% 
-  select.(id, fltr_diagnosis, diagnosis_codes, diagnosis_desc) 
-
-
-
-
-test_create_diag_df <- function(.data) {
-  .data <- .data %>%
-    select.(id,
-            ref_ar_d_a,
-            ref_ar_t_a,
-            starts_with.('icd9_')) %>%
-    pivot_longer.(
-      cols = -c(id, ref_ar_d_a, ref_ar_t_a),
-      values_to = "code",
-      values_drop_na = TRUE
-    ) %>%
-    separate.(name, into = c("type", "serial"), sep = "_") %>%
-    mutate.(diag_code = as.double(code),
-            loc_desc = "Diagnosis",
-            data_source = "diagnosis") %>%
-    left_join.(diagnosis_data, by = "diag_code") %>%
-    rename.(
-      date = ref_ar_d_a,
-      time = ref_ar_t_a,
-      code_cd = diag_code,
-      code_desc = short_desc
-    ) %>%
-    select.(id, date, time, loc_desc, code_cd, code_desc, data_source) %>%
-    filter.(!is.na(code_cd))
-
-  return(.data)
-}
-
-test_create_diag_df(ptos_df)
-
-ptos_df %>%
-    select.(id,
-            ref_ar_d_a,
-            ref_ar_t_a,
-            starts_with.('icd9_')) %>%
-    pivot_longer.(
-      cols = -c(id, ref_ar_d_a, ref_ar_t_a),
-      values_to = "code",
-      values_drop_na = TRUE
-    ) %>%
-    separate.(name, into = c("type", "serial"), sep = "_") %>%
-    mutate.(diag_code = as.double(code),
-            loc_desc = "Diagnosis",
-            data_source = "diagnosis") %>%
-    left_join.(diagnosis_data, by = "diag_code") %>%
-    rename.(
-      date = ref_ar_d_a,
-      time = ref_ar_t_a,
-      code_cd = diag_code,
-      code_desc = short_desc
-    ) %>%
-    select.(id, date, time, loc_desc, code_cd, code_desc, data_source) %>%
-    filter.(!is.na(code_cd))
-
-#NORMALIZE ALL DIAGNOSIS RESULTS BY PATIENT ID
-diagnosis_full_df <- pto_df %>% 
-  select.(id, arrival_dt, arrival_time, starts_with.('icd9_')) %>% 
-  pivot_longer.(cols = c(-id, arrival_dt, arrival_time),
-                values_to = "diag_code", 
-                values_drop_na = TRUE
-                ) %>% 
-  separate.(name, into = c("type", "serial"), sep = "_") %>% 
-  mutate.(diag_code = as.double(diag_code)) %>% 
-  left_join.(diagnosis_data, by = "diag_code") %>% 
-  select(id, arrival_dt, arrival_time, diag_code, short_desc, long_desc)
-
-# PUT ALL DIAGNOSIS INTO A SINGLE ROW PER PATIENT ID
-diagnosis_flat_df <- diagnosis_full_df %>% 
-  summarize.(diagnosis_codes = paste(diag_code, collapse = " "),
-             diagnosis_desc = paste(short_desc, collapse = ", "),
-             by = c(id)) %>% 
-  mutate.(fltr_diagnosis = str_detect(diagnosis_codes, pattern = forearm_fx_list)) %>% 
-  select.(id, fltr_diagnosis, diagnosis_codes, diagnosis_desc) 
-
-#ONLY PULL PATIENTS THAT HAVE FOREARM FRACTURE
-fx_patients <- diagnosis_flat_df %>% 
-  filter.(fltr_diagnosis == T) %>% 
-  select.(id)
-
-```
-
-
-## Complications Results
-### Only pull results from Forearm Fractures
-
-```{r complications_data}
-
-#NORMALIZE ALL DIAGNOSIS RESULTS BY PATIENT ID
-complications_full_df <- pto_df %>% 
-  rename_with.(~ paste0(sub("complic_", "comp_0", .x),"_pr"), .cols = starts_with.('complic_')) %>% 
-  select.(id, starts_with.('comp_')) %>% 
-  select.(id, 
-          ends_with.('da'), 
-          ends_with.('pr'), 
-          ends_with.('lc')) %>% 
-  pivot_longer.(cols = -id,
-                values_to = "values", 
-                values_drop_na = TRUE) %>% 
-  separate.(name, into = c("type", "serial", "desc"), sep = "_") %>% 
-  pivot_wider.(., names_from = desc, values_from = values, values_fn = list) %>% 
-  mutate.(complication_code = as.character(pr)) %>% 
-  filter.(complication_code != 1) %>% 
-  mutate.(date = ifelse(!is.na(da), as.character(da), NULL), 
-          loc_code = proc_loc_func(as.character(lc)), 
-          complication_desc = complications_func(complication_code)
-          ) %>% 
-  select.(id, serial, date, loc_code, complication_code, complication_desc)
-  
-
-# PUT ALL Complications INTO A SINGLE ROW PER PATIENT ID
-complications_flat_df <- complications_full_df %>% 
-  summarize.(complication_codes = paste(complication_code, collapse = " "),
-             complication_desc = paste(complication_desc, collapse = ", "),
-             by = c(id)) %>% 
-  mutate.(fltr_complication = str_detect(complication_codes, pattern = '32')) %>% 
-  select.(id, fltr_complication, complication_codes, complication_desc) 
-
-```
-
-
-
-## Procedure Results
-
-```{r procedures_data}
-
-
-procedures_full_df <- pto_df %>% 
-  select.(id, starts_with.('proc_')) %>% 
-  select.(id, 
-          ends_with.('da'), 
-          ends_with.('ta'), 
-          ends_with.('pr'), 
-          ends_with.('lc')) %>% 
-  pivot_longer.(cols = -id,
-                values_to = "values", 
-                values_drop_na = TRUE) %>% 
-  separate.(name, into = c("type", "serial", "desc"), sep = "_") %>% 
-  pivot_wider.(., names_from = desc, values_from = values, values_fn = list) %>% 
-  mutate.(date = mdy(da), 
-          time = as.character(ta),
-          proc_code = as.character(pr), 
-          loc_code = proc_loc_func(as.character(lc))
-          ) %>% 
-  select.(id, serial, date, time, loc_code, proc_code) %>% 
-  mutate.(proc_code = as.double(proc_code)) %>% 
-  left_join.(icd_data, by = "proc_code")
-
-#ONLY PATIENTS WITH FOREARM FX
-# procedures_full_df <- procedures_full_df %>% 
-#   inner_join.(fx_patients, by = "id")
-
-# write_csv(procedures_df, "~/Data/procedures_info.csv")  
-write_csv(procedures_full_df, "E:/Northwestern/12 - Capstone/procedures_info.csv")
-
-# PUT ALL Complications INTO A SINGLE ROW PER PATIENT ID
-procedures_flat_df <- procedures_full_df %>% 
-  summarize.(procedure_codes = paste(proc_code, collapse = " "),
-             procedure_desc = paste(procedure_desc, collapse = ", "),
-             by = c(id)) %>% 
-  mutate.(fltr_fasciotomy = str_detect(procedure_codes, pattern = '83.14'), 
-          fltr_procedure = str_detect(procedure_codes, pattern = forearm_proc_list)) %>% 
-  select.(id, fltr_fasciotomy, fltr_procedure, procedure_codes, procedure_desc) 
-
-```
-
-## Specific Procedures Relating to Fasciotomy and Forearm Fractures
-
-```{r fasciotomy_forearm_proc}
-
-# Take only the first faciotomy procedure
-fasciotomy_flat_df <- procedures_full_df %>% 
-  filter.(proc_code == '83.14') %>% 
-  arrange.(id, date, time) %>% 
-  group_by(id) %>% 
-  arrange(date, time) %>% 
-  slice(1) %>% 
-  select.(id, date, time, loc_code, proc_code, procedure_desc) %>% 
-  rename.(fasciotomy_dt = date, 
-          fasciotomy_time = time, 
-          fasciotomy_loc = loc_code, 
-          fasciotomy_cd = proc_code, 
-          fasciotomy_desc = procedure_desc)
-
-forearm_procedure_flat_df <- procedures_full_df %>% 
-  filter.(proc_code %in% forearm_proc_list) %>% 
-  arrange.(id, date, time) %>% 
-  group_by(id) %>% 
-  arrange(date, time) %>% 
-  slice(1) %>% 
-  select.(id, date, time, loc_code, proc_code, procedure_desc) %>% 
-  rename.(forearm_dt = date, 
-          forearm_time = time, 
-          forearm_loc = loc_code, 
-          forearm_cd = proc_code, 
-          forearm_desc = procedure_desc)
-
-# fasciotomy_df %>% 
-#   group_by(id) %>% 
-#   filter(n()>1)
-
-# Closed reduction is the manipulation of the bone fragments wihtout surgical exposure of the fragments
-# 79.02 - without internal fixation --> CF
-# 79.12 - with internal fixation  --> CFIF
-# Open reduction is where the fracture fragments are exposed surgically by dissecting the tissues
-# 79.22 - without internal fixation --> OR
-# 79.32 - with internal fixation --> ORIF
-
-# icd_data %>%
-#   mutate.(radius_test = str_detect(procedure_desc, pattern = list('radius')),
-#           ulna_test = str_detect(procedure_desc, pattern = list('ulna')),
-#           facture_test = str_detect(procedure_desc, pattern = list('fracture'))) %>%
-#   filter.(facture_test == T, radius_test == T, ulna_test == T)
-# 
-# 
-# icd_data %>% 
-#   filter.(proc_code == '79.36')
-
-```
-
-
-
-## Patient Data
-
-```{r patient_data}
-
-patient_df <- pto_df %>%
-  left_join.(injury_data, by = c("e_code")) %>%  # INJURY DATA 
-  left_join.(diagnosis_flat_df, by = "id")  %>% # INITIAL DIAGNOSIS
-  left_join.(complications_flat_df, by = "id") %>% 
-  left_join.(procedures_flat_df, by = "id") %>% 
-  left_join.(forearm_procedure_flat_df, by = "id") %>% 
-  left_join.(fasciotomy_flat_df, by = "id") %>% 
-  select(id,
-         trauma_number,
-         sex,
-         race,
-         dob,
-         age,
-         weight_kg, 
-         temp_c,
-         pulse, 
-         resp_rate, 
-         bloodpressure,
-         county_pa,
-         zip_code,
-         insurance_type,
-         injury_dt,
-         injury_time,
-         injury_type, 
-         injury_desc_short, 
-         injury_desc_long,
-         injury_fall_height,
-         injury_patient_extricated,
-         transportion_to_tc,
-         attending_surgeon_spec,
-         arrival_dt, 
-         arrival_time,
-         arrival_eye_resp, 
-         arrival_verbal_resp, 
-         arrival_motor_resp,
-         emergency_dpt_dt,
-         emergency_dpt_time,
-         diagnosis_codes, 
-         diagnosis_desc, 
-         complication_codes, 
-         complication_desc,
-         procedure_codes,
-         procedure_desc,
-         forearm_dt,
-         forearm_time, 
-         forearm_loc,
-         forearm_cd,
-         forearm_desc,
-         fasciotomy_dt,
-         fasciotomy_time, 
-         fasciotomy_loc,
-         fasciotomy_cd,
-         fasciotomy_desc, 
-         discharge_status, 
-         discharge_destination, 
-         fltr_diagnosis, 
-         fltr_procedure, 
-         fltr_fasciotomy,
-         fltr_complication
-         # add in ISS score which is the highest of the 3 most severe scores across six body regions
-  ) %>% 
-    mutate_across.(ends_with.("_dt"), mdy) %>% 
-    mutate.(fltr_diagnosis = ifelse(is.na(fltr_diagnosis), F, fltr_diagnosis), 
-            fltr_procedure = ifelse(is.na(fltr_procedure), F, fltr_procedure),  
-            fltr_fasciotomy = ifelse(is.na(fltr_fasciotomy), F, fltr_fasciotomy), 
-            fltr_complication = ifelse(is.na(fltr_complication), F, fltr_complication))
-  
-# write_csv(procedures_df, "~/Data/procedures_info.csv")  
-write_csv(patient_df, "E:/Northwestern/12 - Capstone/patient_info.csv")
-
-```
-
-
-```{r timeseries_data}
-
-patient_ts <- procedures_full_df %>% 
-  select.(id, date, time, loc_code, proc_code, short_desc) %>% 
-  mutate.(date = as.character(date), 
-          type = "Procedure") %>% 
-  rename.(code = proc_code, 
-          code_desc = short_desc) %>% 
-  rbind(complications_full_df %>% 
-          mutate.(date = ifelse(date == 'character(0)', NA, date), 
-                  time = as.character(NA), 
-                  type = "Complication") %>%  #as.character(NA)) %>%
-          rename.(code = complication_code, 
-                  code_desc = complication_desc) %>% 
-          select.(id, date, time, loc_code, code, code_desc, type)) %>% #NEED TO PULL DIAGNOSIS
-  rbind(diagnosis_full_df %>% 
-          mutate.(date = ifelse(date == 'character(0)', NA, date), 
-                  time = as.character(NA), 
-                  type = "Complication") %>%  #as.character(NA)) %>%
-          rename.(code = complication_code, 
-                  code_desc = complication_desc) %>% 
-          select.(id, date, time, loc_code, code, code_desc, type)) %>% #NEED TO PULL DIAGNOSIS
-  arrange.(id, date, time)
-
-patient_ts
-
-diagnosis_full_df
-
-```
-
-
-
-
+# Let's clean up the transactional data
 
 ```{r data_for_analysis}
 
-analysis_df <- patient_df 
+trans_full_df %>% 
+  filter.(id == '0101188020001731')
+
+patient_df %>% 
+  filter.(id == '0101188020001731')
 
 
 
+create_injury_df <- function(.data){
 
+  .data %>%
+    select.(id, inj_date_a, inj_time_a, e849_x, e_code) %>% 
+    mutate.(date = ifelse(!is.na(inj_date_a), as.character(inj_date_a), NULL),
+            time =  ifelse(!is.na(inj_time_a), as.character(inj_time_a), NULL),
+            loc_desc = injury_loc(e849_x),
+            code_cd = e_code,
+            code_desc = e_code(e_code),
+            data_source = "injury") %>% 
+    select.(id, date, time, loc_desc, code_cd, code_desc, data_source) %>% 
+    slice.(1, by = id)
+
+
+}
+
+
+create_injury_df(ptos_df)
+
+
+ptos_df %>% 
+  select.(id, inj_date_a, inj_time_a, e849_x, e_code) %>% 
+   mutate.(date = ifelse(!is.na(inj_date_a), as.character(inj_date_a), NULL),
+            time =  ifelse(!is.na(inj_time_a), as.character(inj_time_a), NULL),
+            loc_desc = injury_loc(e849_x),
+            code_cd = e_code,
+            code_desc = e_code(e_code),
+            data_source = "injury") %>% 
+  select.(id, date, time, loc_desc, code_cd, code_desc, data_source) %>% 
+  slice.(1, by = id)
+
+  
 
 
 ```
