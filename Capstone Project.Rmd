@@ -7,29 +7,16 @@ date: "4/11/2020"
 ```{r, setup}
 
 # devtools::install_github("markfairbanks/tidytable")
-# devtools::install_github("ultramattyice/ptos")
-# devtools::install_github("Rdatatable/data.table")
+# devtools::install_github("ultramattyice/traumaR")
 
-
-
-pacman::p_load( tidyverse, 
-                fpp3, 
-                lubridate, 
-                DataExplorer, 
-                janitor, 
-                broom, 
-                gt, 
-                ggthemes,
-                data.table,
-                tidytable, 
-                tictoc, 
-                tidystringdist, 
-                ptos
-                )
+pacman::p_load( traumaR,
+                ggplot2, 
+                ggthemes, 
+                tictoc)
 
 options(scipen=999)  #remove scientific notation
 knitr::opts_chunk$set(warning = FALSE)
-knitr::opts_chunk$set(message = FALSE)
+# knitr::opts_chunk$set(message = FALSE)
 knitr::opts_chunk$set(fig.width = 12)
 knitr::opts_chunk$set(fig.height = 10)
 knitr::opts_chunk$set(echo = FALSE)
@@ -41,597 +28,282 @@ knitr::opts_chunk$set(echo = FALSE)
 
 tic()
 
-# raw_data <- fread("E:/Northwestern/12 - Capstone/PTOS_Data.csv", na.strings = c("<unk>", "", "<n/a>")) %>%  
-#   as.data.table() #%>%   clean_names()
-
-
-raw_data <- fread("E:/Northwestern/12 - Capstone/PTOS_Data_toy.csv", na.strings = c("<unk>", "", "<n/a>")) %>%  
+raw_data <- fread("~/Data/PTOS_Data.csv", na.strings = c("<unk>", "", "<n/a>")) %>%  
   as.data.table() #%>%   clean_names()
 
+traumaR::run_full_show(raw_data)
 
-
-
-icd_data <- fread("E:/Northwestern/12 - Capstone/ICD9_Data.csv") %>%  
-  as.data.table() %>% 
-  clean_names() %>% 
-  mutate.(proc_code = as.double(proc_code)) %>% 
-  rename.(procedure_desc = long_desc) %>% 
-  select.(-org_proc_code)
-
-injury_data <- fread("E:/Northwestern/12 - Capstone/ecode_data.csv") %>%  
-  as.data.table() %>% 
-  clean_names() %>% 
-  mutate.(e_code = as.character(e_code)) %>% 
-  rename.(injury_desc_short = short_desc, 
-          injury_desc_long = long_desc) %>% 
-  select.(-diagnosis_code)
-
-diagnosis_data <- fread("E:/Northwestern/12 - Capstone/diagnosis_data.csv") %>%  
-  as.data.table() %>% 
-  clean_names() %>% 
-  mutate.(diag_code = as.double(diag_code))
 
 toc()
 
-#AWS - 54.111 sec elapsed
-#PC - 41.68 sec elapsed
+#AWS - 230.028 sec elapsed
+#PC -  sec elapsed
 
 ```
 
+# Exploratory Data Analysis
 
-```{r manual_lists}
+## What are the patient demographics that had forearm surgery and fasciotomy? 
 
-#Forearm Surgical Procedures
-forearm_proc_list <- list('79.02', '79.12', '79.22', '79.32')
+```{r eda_1}
 
-#DIAGNOSIS RANGES FOR FOREARM FRACTURES 
-forearm_fx_list <- paste(seq(from = 813.00, to = 813.99, by = 0.01), collapse = "|")
+patient_col_list <- list('sex', 'race', 'age_grp', 'peds_flag', 'payor_class_primary', 'injury_month',  'primary_injury_type', 'place_of_injury')
 
-```
+bar_func <- function(data, col){
 
+  col <- rlang::sym(col)
 
-## Drop Columns
-Decided to remove any columns that only contain NA or NULL values to assist reducing the size of data. 
-
-
-```{r new_drop_columns}
-
-ptos_df <- create_ptos_data(raw_data)
-
-
-ptos_df %>% select.(starts_with.("ref_"))
-
-
-
-
-diagnosis_data <- function(.data) {
-
-  diag_df <- .data %>%
-    select.(id, ref_ar_d_a, ref_ar_t_a, starts_with.('icd9_')) %>%
-    pivot_longer.(cols = -c(id, ref_ar_d_a, ref_ar_t_a),
-                  values_to = "code",
-                  values_drop_na = TRUE
-    ) %>%
-    separate.(name, into = c("type", "serial"), sep = "_") %>%
-    mutate.(code = as.double(code),
-            code_desc = map_chr.(code, ~procedure(code))) %>%
-    rename.(date = ref_ar_d_a,
-            time = ref_ar_t_a)
-    select(id, date, time, code, code_desc)
-
-  return(.data)
+  graph_results <- data %>% 
+    filter.(fltr_fasciotomy == T,
+            fltr_procedure == T) %>% 
+    summarize.(total = n.(), by = !!col) %>% 
+    ggplot(aes(x = reorder(!!col, total), y =total, label = total)) +
+    geom_bar(position = "dodge", stat = "identity") + 
+    geom_text(vjust = 0)+
+    ggthemes::theme_stata() +
+    coord_flip() +
+    labs(title = toupper(expr_text(col)),
+         y = "Count of Patients",
+         x = NULL) +
+    theme(axis.text.y=element_text(angle=0, hjust=1))
+  
+  return( graph_results)
 }
 
-diag_test <- diagnosis_data(ptos_df)
+#TODO - Added this to the traumaR package and need to remove from here
+patient_df <- patient_df %>% mutate.(age_grp = as.character(floor(age_in_yrs/10)), 
+                                     peds_flag = ifelse.(age_in_yrs <= 16, T, F), 
+                                     arrival_month = ifelse.(!is.na(arrival_dt), NULL, lubridate::month(arrival_dt, label = TRUE)))
 
 
-ptos_df %>%
-    select.(id, ref_ar_d_a, ref_ar_t_a, starts_with.('icd9_')) %>%
-    pivot_longer.(cols = c(-id, ref_ar_d_a, ref_ar_t_a),
-                  values_to = "code",
-                  values_drop_na = TRUE
-    ) 
-
-
+map.(patient_col_list, ~ bar_func(patient_df, .x))
 
 ```
 
 
 
+```{r}
+
+#TODO 
+# 1. Only use patient data that has complete time and date for arrival, procedure, and fasciotomy
+# 2. Use that to determine the typical time in between - it might be necessary to use the hosptial ID 
+# 3. Use patients age, sex, and location
+# 4. Build this into the traumaR functionality
+
+create_patient_timeframe(patient_df)
 
 
-```{r drop_columns}
-
-tic()
-
-source("01 - Classification Functions.R")
-
-total_observations <- raw_data %>% summarize.(count = n.()) %>% as.integer()
-
-complete_observations <- map_dfc.(raw_data, ~sum(is.na(.))) %>% 
-  rename_with.(~ sub(".x", "", .x)) %>% 
-  pivot_longer.(cols = everything.(), names_to = "column_names", values_to = "missings_obs") %>% 
-  mutate.(total_missing = missings_obs/total_observations)
-
-drop_column_list <- complete_observations %>% 
-  filter.(total_missing >= 1) %>%  #drop columns that have no observations
-  pull.(column_names) 
-
-message(paste("Dropping a few columns here... ", length(drop_column_list), "to be exact" ))
-
-
-pto_df <- raw_data %>% 
-  select.(-any_of.(drop_column_list)) %>%
-  rename.(trauma_number = trauma_num, 
-          dob = d_birth_a, 
-          age = age_in_yrs, 
-          zip_code = pat_adr_z, 
-          insurance_type = pay_cat1,
-          insurance_1 = pay_cat1_o,
-          injury_type = inj_type,
-
-          # INJURY INFORMATION
-          injury_dt = inj_date_a, 
-          injury_time = inj_time_a, 
-          injury_patient_extricated = extric_s,
-          injury_fall_height = hgt_fall, 
-          injury_location = e849_x,
-
-          # TRANSPORTATION INFORMATION
-          transportion_to_tc = transp_s,
-          transporation_dispatch_dt = pre_1_d_da,
-          transporation_dispatch_time = pre_1_d_ta ,
-          transporation_arrival_dt = pre_1_a_da ,
-          transporation_arrival_time = pre_1_a_ta ,
-          transporation_leave_dt = pre_1_l_da ,
-          transporation_leave_time = pre_1_l_ta ,
-          transportation_life_support = life_p1,
-          transportation_eye_resp = eye_opng_1,
-          transportation_verbal_resp = ver_resp_1,
-          transportation_motor_resp = mot_resp_1,  
-          transportation_pulse = pulse_1,
-          transportation_resp_rate = resp_rat_1,
-          transportation_bloodpressure = sys_bp_1,
-          
-          # REFERRING FACILITY
-          ref_facility_adm_time = ref_ar_t_a,
-          ref_facility_adm_dt = ref_ar_d_a,
-          ref_facility_disc_time = ref_dp_t_a, 
-          ref_facility_disc_dt = ref_dp_d_a, 
-          ref_facility_desc = ref_fac_n, 
-          ref_facility_trans = transp_r, 
-
-          # ADMISSION 
-          # admission_time = ref_ar_t_a, 
-          # admission_dt = ref_ar_d_a,
-          admission_eye_resp = eye_opng_a,
-          admission_verbal_resp = ver_resp_a,
-          admission_motor_resp = mot_resp_a,           
-          admission_pulse = pulse_a,
-          admission_resp_rate = resp_rat_a,
-          admission_bloodpressure = sys_bp_a,
-          admission_weight_kg = weight_kg,
-          admission_temp_c = temp_c, 
-          emergency_dpt_time = eda_time_a, 
-          emergency_dpt_dt = eda_date_a, 
-          attending_surgeon_spec = surg_sp,
-          
-          # DISCHARGE
-          discharge_status = dis_status,
-          discharge_destination = discg_to,
-          discharge_status_feeding = d_disabl_f, 
-          discharge_status_locomotion = d_disabl_l, 
-          discharge_status_expression = d_disabl_e,
-          discharge_status_transfer_mobility = d_disabl_t, 
-          discharge_status_social_interaction = d_disabl_s, 
-          
-          # DATES AND TIMES
-
-          
-  ) %>% 
-  filter.(!is.na(dob) & !is.na(age)) %>% 
-  mutate.(dob = dob_cleanup(age, dob), # ifelse(is.na(dob), as.character(mdy(injury_dt)-years(age)), dob),
-          age = age_cleanup(age, dob, injury_dt), #ifelse(is.na(age) & !is.na(dob), as.double(round(difftime(mdy(injury_dt), mdy(dob), unit="weeks")/52.25,0)),age),
-          id = paste0(str_remove_all(dob, "/"), trauma_number)) %>% 
-    relocate.(id, .before = alias_inst_num) %>% 
-  filter.(age <= 16)
-
-tidytable::inv_gc()
-
-toc()
-#25.36 sec elapsed
-
-tic()
-
-pto_df <- pto_df %>% 
-  mutate.(dob = mdy(dob),
-          e_code = as.character(e_code),
-          #CASE STATEMENTS USING HELPER FUNCTIONS
-          sex = gender_func(sex),
-          race = race_func(race),
-          county_pa = county_func(county_pa),
-          insurance_type = insurance_func(insurance_type), 
-         
-           # INJURY FUNCTIONS
-          injury_fall_height = fall_height_func(injury_fall_height),
-          injury_type = injury_type_func(injury_type),
-          injury_patient_extricated = extricated_func(injury_patient_extricated),
-          injury_location = injury_loc_func(injury_location),
-
-          # TRANSPORTATION
-          transportion_to_tc = transportation_func(transportion_to_tc),
-          transportation_life_support = life_support_func(transportation_life_support), 
-          
-          # TRANSFER PATIENT
-          ref_facility_desc = facility_name_func(ref_facility_desc), 
-          ref_facility_trans = transportation_func(ref_facility_trans), 
-          
-          
-          # ADMISSION
-          admission_eye_resp = eye_resp_func(admission_eye_resp),
-          admission_verbal_resp = verbal_resp_func(admission_verbal_resp),
-          admission_motor_resp = motor_resp_func(admission_motor_resp),
-          # admission_time = ifelse(is.na(admission_time), emergency_dpt_time, admission_time),
-          # admission_dt = ifelse(is.na(admission_dt), emergency_dpt_dt, admission_dt),
-          
-          # PROCEDURES
-          
-          
-          # ARRIVAL FUNCTIONS
-          attending_surgeon_spec = attending_surgeon_func(attending_surgeon_spec),
-          
-          #DISCHARGE FUNCTIONS
-          
-          discharge_status = discharge_status_func(discharge_status), 
-          discharge_destination = discharge_destination_func(discharge_destination)) 
-
-toc()
+time_frame_results <- 
+patient_df %>% 
+  filter.(fltr_fasciotomy == T, 
+          fltr_procedure == T, 
+          # age_in_yrs <= 16
+  ) %>%
+  # mutate_across.(ends_with.("_tm"), ~ ifelse.(is.na(.x), "12:00", .x)) %>% 
+  mutate_across.(ends_with.("_tm"), as.ITime) %>% 
+  mutate_across.(ends_with.("_dt"), mdy) %>% 
+  # filter.(is.na(fasciotomy_tm)) %>%
+  select.(
+    id,
+    age_in_yrs,
+    arrival_dt,
+    arrival_tm,
+    forearm_fx_dt,
+    forearm_fx_tm,
+    fasciotomy_dt,
+    fasciotomy_tm,
+    discharge_dt,
+    discharge_tm
+  ) %>%
+  drop_na.() %>% 
+  mutate.(peds_adult = ifelse.(age_in_yrs <= 16, "Peds", "Adult"), 
+          arrival_dtime = ymd_hms(paste(arrival_dt, arrival_tm)), 
+          forearm_fx_dtime = ymd_hms(paste(forearm_fx_dt, forearm_fx_tm)), 
+          fasciotomy_dtime = ymd_hms(paste(fasciotomy_dt, fasciotomy_tm)), 
+          discharge_dtime = ymd_hms(paste(discharge_dt, discharge_tm)), 
+          total_stay_time = as.period(interval(arrival_dtime,  discharge_dtime)), 
+          arrival_to_forearm_time = as.period(interval(arrival_dtime, forearm_fx_dtime)), 
+          arrival_to_fasciotomy_time = as.period(interval(arrival_dtime, fasciotomy_dtime)), 
+          forearm_to_fasciotomy_time = as.period(interval(forearm_fx_dtime,  fasciotomy_dtime)), 
+          fasciotomy_to_discharge_time = as.period(interval(fasciotomy_dtime,  discharge_dtime))) 
 
 
-# FREE UP MEMORY AND DROP LARGE DATA 
-# rm("raw_data")
-tidytable::inv_gc()
+library(ggplot2)
+
+time_frame_results %>% 
+  ggplot(aes( x = period_to_seconds(total_stay_time), y = period_to_seconds(arrival_to_fasciotomy_time))) +
+    geom_point()
+
+time_frame_results %>% 
+  mutate.(total_stay_sec = period_to_seconds(total_stay_time), 
+          total_stay_sec = as.numeric(total_stay_sec)) %>%  
+  ggplot(aes())
+  hist(total_stay_sec, breaks=20)
+
+
+time_frame_results %>% 
+  mutate.(total_stay_sec = period_to_seconds(total_stay_time), 
+          total_stay_sec = as.numeric(total_stay_sec)) %>%  
+  ggplot(aes(x=total_stay_sec)) + 
+  geom_histogram(color="black", fill="white")
+
+
+
+time_frame_results %>% 
+  mutate.(total_stay_sec = period_to_seconds(total_stay_time), 
+          total_stay_min = total_stay_sec/60,
+          total_stay_hr= total_stay_min/60, 
+          total_stay_day = total_stay_hr/24)
+
+
+p <- seconds(x = 120)
+
+period_to_seconds(p)%/%60%/%60
+
+geom_bar(position="dodge", stat="identity")
+
+
+ggplot(data, aes(fill=condition, y=value, x=specie)) + 
+    geom_bar(position="dodge", stat="identity")
 
 ```
 
 
-```{r referring_facility_diagnosis}
+```{r}
 
-#NORMALIZE ALL DIAGNOSIS RESULTS BY PATIENT ID
-ref_diag_full_df <- pto_df %>% 
-  select.(id, starts_with.('ref_')) %>% 
-  pivot_longer.(cols = -c(id, 
-                          ref_facility_adm_dt, 
-                          ref_facility_adm_time, 
-                          ref_facility_disc_dt, 
-                          ref_facility_disc_time, 
-                          ref_facility_desc),
-                values_to = "proc_code", 
-                values_drop_na = TRUE
-                ) %>% 
-  filter.(str_detect(name, pattern = 'ref_intd')) %>% 
-  mutate.(proc_code = as.double(proc_code)) %>% 
-  left_join.(icd_data, by = "proc_code") %>% 
-  rename.(date = ref_facility_adm_dt, 
-          time = ref_facility_adm_time, 
-          location = ref_facility_desc,
-          code = proc_code, 
-          code_desc_long = procedure_desc, 
-          code_desc_short = short_desc) %>% 
-  select(id, date, time, location, code, code_desc_long, code_desc_short)
-
-# PUT ALL DIAGNOSIS INTO A SINGLE ROW PER PATIENT ID
-diagnosis_flat_df <- diagnosis_full_df %>% 
-  summarize.(diagnosis_codes = paste(diag_code, collapse = " "),
-             diagnosis_desc = paste(short_desc, collapse = ", "),
-             by = c(id)) %>% 
-  mutate.(fltr_diagnosis = str_detect(diagnosis_codes, pattern = forearm_fx_list)) %>% 
-  select.(id, fltr_diagnosis, diagnosis_codes, diagnosis_desc) 
-
-#ONLY PULL PATIENTS THAT HAVE FOREARM FRACTURE
-fx_patients <- diagnosis_flat_df %>% 
-  filter.(fltr_diagnosis == T) %>% 
-  select.(id)
-
+  trans_full_df %>%
+    filter.(data_source %in% c('arrival', 'discharge', 'transport')) %>%   #, 'discharge', 'transport'
+    select.(id, date, time, code_desc, data_source, loc_desc) %>% 
+    filter.(date != 'NA') %>% 
+    arrange.(id, date, time) %>% 
+    pivot_wider.(names_from = code_desc, values_from = c(date, time), values_fn = max)
 ```
-
-
-
-## Diagnosis Results
-### Only pull results from Forearm Fractures
-
-```{r diagnosis_data}
-
-#NORMALIZE ALL DIAGNOSIS RESULTS BY PATIENT ID
-diagnosis_full_df <- pto_df %>% 
-  select.(id, arrival_dt, arrival_time, starts_with.('icd9_')) %>% 
-  pivot_longer.(cols = c(-id, arrival_dt, arrival_time),
-                values_to = "diag_code", 
-                values_drop_na = TRUE
-                ) %>% 
-  separate.(name, into = c("type", "serial"), sep = "_") %>% 
-  mutate.(diag_code = as.double(diag_code)) %>% 
-  left_join.(diagnosis_data, by = "diag_code") %>% 
-  select(id, arrival_dt, arrival_time, diag_code, short_desc, long_desc)
-
-# PUT ALL DIAGNOSIS INTO A SINGLE ROW PER PATIENT ID
-diagnosis_flat_df <- diagnosis_full_df %>% 
-  summarize.(diagnosis_codes = paste(diag_code, collapse = " "),
-             diagnosis_desc = paste(short_desc, collapse = ", "),
-             by = c(id)) %>% 
-  mutate.(fltr_diagnosis = str_detect(diagnosis_codes, pattern = forearm_fx_list)) %>% 
-  select.(id, fltr_diagnosis, diagnosis_codes, diagnosis_desc) 
-
-#ONLY PULL PATIENTS THAT HAVE FOREARM FRACTURE
-fx_patients <- diagnosis_flat_df %>% 
-  filter.(fltr_diagnosis == T) %>% 
-  select.(id)
-
-```
-
-
-## Complications Results
-### Only pull results from Forearm Fractures
-
-```{r complications_data}
-
-#NORMALIZE ALL DIAGNOSIS RESULTS BY PATIENT ID
-complications_full_df <- pto_df %>% 
-  rename_with.(~ paste0(sub("complic_", "comp_0", .x),"_pr"), .cols = starts_with.('complic_')) %>% 
-  select.(id, starts_with.('comp_')) %>% 
-  select.(id, 
-          ends_with.('da'), 
-          ends_with.('pr'), 
-          ends_with.('lc')) %>% 
-  pivot_longer.(cols = -id,
-                values_to = "values", 
-                values_drop_na = TRUE) %>% 
-  separate.(name, into = c("type", "serial", "desc"), sep = "_") %>% 
-  pivot_wider.(., names_from = desc, values_from = values, values_fn = list) %>% 
-  mutate.(complication_code = as.character(pr)) %>% 
-  filter.(complication_code != 1) %>% 
-  mutate.(date = ifelse(!is.na(da), as.character(da), NULL), 
-          loc_code = proc_loc_func(as.character(lc)), 
-          complication_desc = complications_func(complication_code)
-          ) %>% 
-  select.(id, serial, date, loc_code, complication_code, complication_desc)
-  
-
-# PUT ALL Complications INTO A SINGLE ROW PER PATIENT ID
-complications_flat_df <- complications_full_df %>% 
-  summarize.(complication_codes = paste(complication_code, collapse = " "),
-             complication_desc = paste(complication_desc, collapse = ", "),
-             by = c(id)) %>% 
-  mutate.(fltr_complication = str_detect(complication_codes, pattern = '32')) %>% 
-  select.(id, fltr_complication, complication_codes, complication_desc) 
-
-```
-
-## Procedure Results
-
-```{r procedures_data}
-
-procedures_full_df <- pto_df %>% 
-  select.(id, starts_with.('proc_')) %>% 
-  select.(id, 
-          ends_with.('da'), 
-          ends_with.('ta'), 
-          ends_with.('pr'), 
-          ends_with.('lc')) %>% 
-  pivot_longer.(cols = -id,
-                values_to = "values", 
-                values_drop_na = TRUE) %>% 
-  separate.(name, into = c("type", "serial", "desc"), sep = "_") %>% 
-  pivot_wider.(., names_from = desc, values_from = values, values_fn = list) %>% 
-  mutate.(date = mdy(da), 
-          time = as.character(ta),
-          proc_code = as.character(pr), 
-          loc_code = proc_loc_func(as.character(lc))
-          ) %>% 
-  select.(id, serial, date, time, loc_code, proc_code) %>% 
-  mutate.(proc_code = as.double(proc_code)) %>% 
-  left_join.(icd_data, by = "proc_code")
-
-#ONLY PATIENTS WITH FOREARM FX
-# procedures_full_df <- procedures_full_df %>% 
-#   inner_join.(fx_patients, by = "id")
-
-# write_csv(procedures_df, "~/Data/procedures_info.csv")  
-write_csv(procedures_full_df, "E:/Northwestern/12 - Capstone/procedures_info.csv")
-
-# PUT ALL Complications INTO A SINGLE ROW PER PATIENT ID
-procedures_flat_df <- procedures_full_df %>% 
-  summarize.(procedure_codes = paste(proc_code, collapse = " "),
-             procedure_desc = paste(procedure_desc, collapse = ", "),
-             by = c(id)) %>% 
-  mutate.(fltr_fasciotomy = str_detect(procedure_codes, pattern = '83.14'), 
-          fltr_procedure = str_detect(procedure_codes, pattern = forearm_proc_list)) %>% 
-  select.(id, fltr_fasciotomy, fltr_procedure, procedure_codes, procedure_desc) 
-
-```
-
-## Specific Procedures Relating to Fasciotomy and Forearm Fractures
-
-```{r fasciotomy_forearm_proc}
-
-# Take only the first faciotomy procedure
-fasciotomy_flat_df <- procedures_full_df %>% 
-  filter.(proc_code == '83.14') %>% 
-  arrange.(id, date, time) %>% 
-  group_by(id) %>% 
-  arrange(date, time) %>% 
-  slice(1) %>% 
-  select.(id, date, time, loc_code, proc_code, procedure_desc) %>% 
-  rename.(fasciotomy_dt = date, 
-          fasciotomy_time = time, 
-          fasciotomy_loc = loc_code, 
-          fasciotomy_cd = proc_code, 
-          fasciotomy_desc = procedure_desc)
-
-forearm_procedure_flat_df <- procedures_full_df %>% 
-  filter.(proc_code %in% forearm_proc_list) %>% 
-  arrange.(id, date, time) %>% 
-  group_by(id) %>% 
-  arrange(date, time) %>% 
-  slice(1) %>% 
-  select.(id, date, time, loc_code, proc_code, procedure_desc) %>% 
-  rename.(forearm_dt = date, 
-          forearm_time = time, 
-          forearm_loc = loc_code, 
-          forearm_cd = proc_code, 
-          forearm_desc = procedure_desc)
-
-# fasciotomy_df %>% 
-#   group_by(id) %>% 
-#   filter(n()>1)
-
-# Closed reduction is the manipulation of the bone fragments wihtout surgical exposure of the fragments
-# 79.02 - without internal fixation --> CF
-# 79.12 - with internal fixation  --> CFIF
-# Open reduction is where the fracture fragments are exposed surgically by dissecting the tissues
-# 79.22 - without internal fixation --> OR
-# 79.32 - with internal fixation --> ORIF
-
-# icd_data %>%
-#   mutate.(radius_test = str_detect(procedure_desc, pattern = list('radius')),
-#           ulna_test = str_detect(procedure_desc, pattern = list('ulna')),
-#           facture_test = str_detect(procedure_desc, pattern = list('fracture'))) %>%
-#   filter.(facture_test == T, radius_test == T, ulna_test == T)
-# 
-# 
-# icd_data %>% 
-#   filter.(proc_code == '79.36')
-
-```
-
-
-
-## Patient Data
-
-```{r patient_data}
-
-patient_df <- pto_df %>%
-  left_join.(injury_data, by = c("e_code")) %>%  # INJURY DATA 
-  left_join.(diagnosis_flat_df, by = "id")  %>% # INITIAL DIAGNOSIS
-  left_join.(complications_flat_df, by = "id") %>% 
-  left_join.(procedures_flat_df, by = "id") %>% 
-  left_join.(forearm_procedure_flat_df, by = "id") %>% 
-  left_join.(fasciotomy_flat_df, by = "id") %>% 
-  select(id,
-         trauma_number,
-         sex,
-         race,
-         dob,
-         age,
-         weight_kg, 
-         temp_c,
-         pulse, 
-         resp_rate, 
-         bloodpressure,
-         county_pa,
-         zip_code,
-         insurance_type,
-         injury_dt,
-         injury_time,
-         injury_type, 
-         injury_desc_short, 
-         injury_desc_long,
-         injury_fall_height,
-         injury_patient_extricated,
-         transportion_to_tc,
-         attending_surgeon_spec,
-         arrival_dt, 
-         arrival_time,
-         arrival_eye_resp, 
-         arrival_verbal_resp, 
-         arrival_motor_resp,
-         emergency_dpt_dt,
-         emergency_dpt_time,
-         diagnosis_codes, 
-         diagnosis_desc, 
-         complication_codes, 
-         complication_desc,
-         procedure_codes,
-         procedure_desc,
-         forearm_dt,
-         forearm_time, 
-         forearm_loc,
-         forearm_cd,
-         forearm_desc,
-         fasciotomy_dt,
-         fasciotomy_time, 
-         fasciotomy_loc,
-         fasciotomy_cd,
-         fasciotomy_desc, 
-         discharge_status, 
-         discharge_destination, 
-         fltr_diagnosis, 
-         fltr_procedure, 
-         fltr_fasciotomy,
-         fltr_complication
-         # add in ISS score which is the highest of the 3 most severe scores across six body regions
-  ) %>% 
-    mutate_across.(ends_with.("_dt"), mdy) %>% 
-    mutate.(fltr_diagnosis = ifelse(is.na(fltr_diagnosis), F, fltr_diagnosis), 
-            fltr_procedure = ifelse(is.na(fltr_procedure), F, fltr_procedure),  
-            fltr_fasciotomy = ifelse(is.na(fltr_fasciotomy), F, fltr_fasciotomy), 
-            fltr_complication = ifelse(is.na(fltr_complication), F, fltr_complication))
-  
-# write_csv(procedures_df, "~/Data/procedures_info.csv")  
-write_csv(patient_df, "E:/Northwestern/12 - Capstone/patient_info.csv")
-
-```
-
-
-```{r timeseries_data}
-
-patient_ts <- procedures_full_df %>% 
-  select.(id, date, time, loc_code, proc_code, short_desc) %>% 
-  mutate.(date = as.character(date), 
-          type = "Procedure") %>% 
-  rename.(code = proc_code, 
-          code_desc = short_desc) %>% 
-  rbind(complications_full_df %>% 
-          mutate.(date = ifelse(date == 'character(0)', NA, date), 
-                  time = as.character(NA), 
-                  type = "Complication") %>%  #as.character(NA)) %>%
-          rename.(code = complication_code, 
-                  code_desc = complication_desc) %>% 
-          select.(id, date, time, loc_code, code, code_desc, type)) %>% #NEED TO PULL DIAGNOSIS
-  rbind(diagnosis_full_df %>% 
-          mutate.(date = ifelse(date == 'character(0)', NA, date), 
-                  time = as.character(NA), 
-                  type = "Complication") %>%  #as.character(NA)) %>%
-          rename.(code = complication_code, 
-                  code_desc = complication_desc) %>% 
-          select.(id, date, time, loc_code, code, code_desc, type)) %>% #NEED TO PULL DIAGNOSIS
-  arrange.(id, date, time)
-
-patient_ts
-
-diagnosis_full_df
-
-```
-
-
-
 
 
 ```{r data_for_analysis}
 
-analysis_df <- patient_df 
+patient_df %>% 
+  filter.(id == '0616196020000001') %>% t()
+  filter.(fltr_fasciotomy == T)  %>% 
+  t() 
+ 
+
+```
+
+
+```{r}
+
+# 0101190120101353
+ptos_df %>%  
+  select.(id, starts_with.("ref_"), starts_with.("eda_")) %>% 
+  filter.(id == '0101190120101353') %>% View()
+```
 
 
 
+```{r}
+ 
 
+ptos_df %>% 
+  select.(id, eda_time_a, eda_date_a, ref_ar_d_a, ref_ar_t_a, ref_dp_d_a, ref_dp_t_a, edl_date_a, edl_time_a) %>% head(100) %>% 
+  # filter.(id == '0101190120101353') %>% 
+  pivot_longer.(cols = -id) %>% 
+  drop_na.() %>% 
+  mutate.(type_col = ifelse.(str_detect(name, paste(c("date", "_d_"), collapse = '|')),'date', 'time'),
+          code_desc = case.(name == 'eda_time_a', 'Arrival' ,
+                          name == 'eda_date_a', 'Arrival' ,
+                          name == 'ref_ar_d_a', "Arrival", 
+                          name == 'ref_ar_t_a', "Arrival", 
+                          name == 'ref_dp_d_a', "Discharge", 
+                          name == 'ref_dp_t_a', "Discharge", 
+                          name == 'edl_date_a', "Discharge", 
+                          name == 'edl_time_a', "Discharge"),
+          loc_desc = case.(name == 'eda_time_a', "ED", 
+                           name == 'eda_date_a', "ED", 
+                           name == 'ref_ar_d_a', "Referring Facility", 
+                           name == 'ref_ar_t_a', "Referring Facility",
+                           name == 'ref_dp_d_a', "Referring Facility", 
+                           name == 'ref_dp_t_a', "Referring Facility", 
+                           name == 'edl_date_a', "ED", 
+                           name == 'edl_time_a', "ED")) %>% 
+  select.(-name) %>% 
+  pivot_wider.(names_from = type_col, values_from = value) %>% 
+  mutate.(code_cd = "NA", 
+          data_source = code_desc) %>% 
+  select.(id, date, time, loc_desc, code_cd, code_desc, data_source)
+
+        # arrival_time = ifelse(is.na(arrival_time), emergency_dpt_time, arrival_time),
+        #   arrival_dt = ifelse(is.na(arrival_dt), emergency_dpt_dt, arrival_dt),
+        #   
+        #   eda_time_a #Emergency Department
+        #   eda_date_a
+        #   
+        #   arrival_time = ref_ar_t_a, admission from referring hospital
+        #   arrival_dt = ref_ar_d_a,
+          
+          #  'ref_dp_d_a',  'referring_facility_discharge_date',
+          #  'ref_dp_d_d',  'referring_facility_discharge_dt',
+          #  'ref_dp_t_a',  'referring_facility_discharge_tm',
+          # 
+          # 'edl_date_a',  'administratively_discharged_from_ed_date',
+          # 'edl_date_d',  'administratively_discharged_from_ed_dt',
+
+```
+
+```{r}
+
+ptos_df %>% 
+  select.(id, starts_with.("pre_")) %>% head(100) %>% 
+  # filter.(id == '0101190120101353') %>% 
+  pivot_longer.(cols = -id) %>% 
+  drop_na.() %>% 
+  mutate.(type_col = ifelse.(str_detect(name, "_ta"),'time', 'date'), 
+          loc_desc = case.(name == 'pre_1_a_da', 'transport arrive at scene',
+                           name == 'pre_1_a_ta', 'transport arrive at scene',
+                           name == 'pre_1_d_da', 'transport dispatch',
+                           name == 'pre_1_d_ta', 'transport dispatch',
+                           name == 'pre_1_l_da', 'transport leave scene',
+                           name == 'pre_1_l_ta', 'transport leave scene',
+                           name == 'pre_r_a_da', 'interhospital transport arrive at referring facility',
+                           name == 'pre_r_a_ta', 'interhospital transport arrive at referring facility',
+                           name == 'pre_r_d_da', 'interhospital transport dispatch',
+                           name == 'pre_r_d_ta', 'interhospital transport dispatch',
+                           name == 'pre_r_l_da', 'interhospital transport leave referring facility',
+                           name == 'pre_r_l_ta', 'interhospital transport leave referring facility',
+                           name == 'pre_s_a_da', 'scene provider arrive at scene',
+                           name == 'pre_s_a_ta', 'scene provider arrive at scene',
+                           name == 'pre_s_d_da', 'scene provider dispatch',
+                           name == 'pre_s_d_ta', 'scene provider dispatch',
+                           name == 'pre_s_l_da', 'scene provider leave scene',
+                           name == 'pre_s_l_ta', 'scene provider leave scene'),
+          code_desc = "transport") %>% 
+  select.(-name) %>% 
+  pivot_wider.(names_from = type_col, values_from = value) %>% 
+  mutate.(code_cd = "NA", 
+          data_source = code_desc) %>% 
+  select.(id, date, time, loc_desc, code_cd, code_desc, data_source)
 
 
 ```
 
 
 
-
-
-
-
+                       names == 'pre_1_a_da',  'arrive_at_scene',
+                       names == 'pre_1_a_ta',  'arrive_at_scene',
+                       names == 'pre_1_d_da',  'transport_dispatch',
+                       names == 'pre_1_d_ta',  'transport_dispatch',
+                       names == 'pre_1_l_da',  'transport_leave_scene',
+                       names == 'pre_1_l_ta',  'transport_leave_scene',
+                       names == 'pre_r_a_da',  'interhospital_transport_arrive_at_referring_facility',
+                       names == 'pre_r_a_ta',  'interhospital_transport_arrive_at_referring_facility',
+                       names == 'pre_r_d_da',  'interhospital_transport_dispatch',
+                       names == 'pre_r_d_ta',  'interhospital_transport_dispatch',
+                       names == 'pre_r_l_da',  'interhospital_transport_leave_referring_facility',
+                       names == 'pre_r_l_ta',  'interhospital_transport_leave_referring_facility',
+                       names == 'pre_s_a_da',  'scene_provider_arrive_at_scene',
+                       names == 'pre_s_a_ta',  'scene_provider_arrive_at_scene',
+                       names == 'pre_s_d_da',  'scene_provider_dispatch',
+                       names == 'pre_s_d_ta',  'scene_provider_dispatch',
+                       names == 'pre_s_l_da',  'scene_provider_leave_scene',
+                       names == 'pre_s_l_ta',  'scene_provider_leave_scene',
 
