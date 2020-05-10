@@ -11,7 +11,8 @@ date: "4/11/2020"
 
 pacman::p_load( traumaR,
                 ggplot2, 
-                ggthemes, 
+                ggthemes,
+                rlang,
                 tictoc)
 
 options(scipen=999)  #remove scientific notation
@@ -45,18 +46,24 @@ toc()
 
 ## What are the patient demographics that had forearm surgery and fasciotomy? 
 
-```{r eda_1}
+```{r eda_1, fig.height=6, fig.width=8}
 
-patient_col_list <- list('sex', 'race', 'age_grp', 'peds_flag', 'payor_class_primary', 'injury_month',  'primary_injury_type', 'place_of_injury')
+patient_col_list <- list('sex',   
+                         'race',
+                         'age_grp',
+                         'primary_injury_type',
+                         'place_of_injury',
+                         'forearm_fx_loc',
+                         'forearm_fx_desc',
+                         'fasciotomy_loc'
+)
 
 bar_func <- function(data, col){
 
   col <- rlang::sym(col)
 
   graph_results <- data %>% 
-    filter.(fltr_fasciotomy == T,
-            fltr_procedure == T) %>% 
-    summarize.(total = n.(), by = !!col) %>% 
+    summarize.(total = n.(), by = c(!!col, peds_adult_flag)) %>% 
     ggplot(aes(x = reorder(!!col, total), y =total, label = total)) +
     geom_bar(position = "dodge", stat = "identity") + 
     geom_text(vjust = 0)+
@@ -65,21 +72,33 @@ bar_func <- function(data, col){
     labs(title = toupper(expr_text(col)),
          y = "Count of Patients",
          x = NULL) +
-    theme(axis.text.y=element_text(angle=0, hjust=1))
+    theme(axis.text.y=element_text(angle=0, hjust=1)) +
+    facet_wrap(~peds_adult_flag)
   
   return( graph_results)
 }
 
-#TODO - Added this to the traumaR package and need to remove from here
-patient_df <- patient_df %>% mutate.(age_grp = as.character(floor(age_in_yrs/10)), 
-                                     peds_flag = ifelse.(age_in_yrs <= 16, T, F), 
-                                     arrival_month = ifelse.(!is.na(arrival_dt), NULL, lubridate::month(arrival_dt, label = TRUE)))
+
+map.(patient_col_list, ~ bar_func(patient_periods, .x))
 
 
-map.(patient_col_list, ~ bar_func(patient_df, .x))
+data.table::fwrite(patient_periods, file = "patient_time_periods.csv")
 
 ```
 
+
+
+
+
+```{r}
+patient_periods %>% 
+  select.(age_grp, age_in_yrs) %>% 
+  summarize.(lo = min(age_in_yrs),
+             hi = max(age_in_yrs), 
+             med = median(age_in_yrs), 
+             mean = mean(age_in_yrs), by = age_grp) %>% 
+  arrange.(age_grp)
+```
 
 
 ```{r}
