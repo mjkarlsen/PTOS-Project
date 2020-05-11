@@ -1,7 +1,7 @@
 ---
 title: "MSDS Capstone Project"
 author: "Matt Carlson"
-date: "4/11/2020"
+date: "5/11/2020"
 ---
 
 ```{r, setup}
@@ -13,13 +13,14 @@ pacman::p_load( traumaR,
                 ggplot2, 
                 ggthemes,
                 rlang,
-                tictoc)
+                tictoc, 
+                gt)
 
 options(scipen=999)  #remove scientific notation
 knitr::opts_chunk$set(warning = FALSE)
 # knitr::opts_chunk$set(message = FALSE)
-knitr::opts_chunk$set(fig.width = 12)
-knitr::opts_chunk$set(fig.height = 10)
+# knitr::opts_chunk$set(fig.width = 12)
+# knitr::opts_chunk$set(fig.height = 10)
 knitr::opts_chunk$set(echo = FALSE)
 
 ```
@@ -45,6 +46,15 @@ toc()
 # Exploratory Data Analysis
 
 ## What are the patient demographics that had forearm surgery and fasciotomy? 
+
+```{r}
+ptos_df %>% 
+  select.(contains.('death'))
+
+
+```
+
+
 
 ```{r eda_1, fig.height=6, fig.width=8}
 
@@ -82,23 +92,121 @@ bar_func <- function(data, col){
 map.(patient_col_list, ~ bar_func(patient_periods, .x))
 
 
-data.table::fwrite(patient_periods, file = "patient_time_periods.csv")
+# data.table::fwrite(patient_periods, file = "patient_time_periods.csv")
 
 ```
 
+
+```{r}
+
+patient_col_list <- list('sex',   
+                         'race',
+                         'age_grp',
+                         'primary_injury_type',
+                         'place_of_injury',
+                         'forearm_fx_loc',
+                         'forearm_fx_desc',
+                         'fasciotomy_loc'
+)
+
+bar_func <- function(data, col){
+
+  col <- rlang::sym(col)
+
+  graph_results <- data %>% 
+    summarize.(total = n.(), by = c(!!col, peds_adult_flag)) %>% 
+    ggplot(aes(x = reorder(!!col, total), y =total, label = total)) +
+    geom_bar(position = "dodge", stat = "identity") + 
+    geom_text(vjust = 0)+
+    ggthemes::theme_stata() +
+    coord_flip() +
+    labs(title = toupper(expr_text(col)),
+         y = "Count of Patients",
+         x = NULL) +
+    theme(axis.text.y=element_text(angle=0, hjust=1)) +
+    facet_wrap(~peds_adult_flag)
+  
+  return( graph_results)
+}
+
+
+map.(patient_col_list, ~ bar_func(patient_df, .x))
+
+
+```
 
 
 
 
 ```{r}
-patient_periods %>% 
-  select.(age_grp, age_in_yrs) %>% 
-  summarize.(lo = min(age_in_yrs),
-             hi = max(age_in_yrs), 
-             med = median(age_in_yrs), 
-             mean = mean(age_in_yrs), by = age_grp) %>% 
-  arrange.(age_grp)
+
+patient_df %>% 
+  select.(forearm_fx_desc, fasciotomy_desc) %>% 
+  filter.(!is.na(forearm_fx_desc)) %>% 
+  mutate.(fasciotomy = ifelse.(is.na(fasciotomy_desc), 'no_fasc', 'yes_fasc')) %>% 
+  summarize.(total = n.(), by = c(forearm_fx_desc, fasciotomy)) %>%
+  arrange.(-total) %>% 
+  pivot_wider.(names_from = fasciotomy, values_from = total) %>% 
+  mutate.(total_no = no_fasc/sum(no_fasc, na.rm = TRUE), 
+          total_yes = yes_fasc/sum(yes_fasc, na.rm = TRUE)) %>% 
+  arrange.(-total_yes, forearm_fx_desc, ) %>% 
+  select.(forearm_fx_desc, yes_fasc, total_yes, no_fasc, total_no) %>% 
+  gt(
+    rowname_col = 'forearm_fx_desc'
+    ) %>% 
+  tab_header(
+    title = md("Forearm Procedures which have Fasciotomy"),
+    subtitle = md("PTOS Data")
+  ) %>% 
+  tab_spanner(
+    label = "Fasciotomy", 
+    columns = vars(yes_fasc, total_yes)
+  ) %>% 
+  tab_spanner(
+    label = "No Fasciotomy", 
+    columns = vars(no_fasc, total_no)
+  ) %>% 
+  cols_label(yes_fasc = "#", 
+             total_yes = "% of Total", 
+             no_fasc = "#", 
+             total_no = "% of Total") %>%
+  fmt_percent(vars(total_yes, total_no), decimals = 1) %>% 
+  fmt_number(vars(yes_fasc, no_fasc), decimals = 0) %>% 
+  summary_rows(columns = vars( total_yes, total_no),
+               fns = list(Total = ~sum(.)),
+               formatter = fmt_percent,
+               decimals = 1) %>%
+  summary_rows(columns = vars(yes_fasc,  no_fasc),
+               fns = list(Total = ~sum(.)),
+               formatter = fmt_number,
+               decimals = 0)
+  
+  
 ```
+
+
+
+```{r}
+ptos_df %>% 
+  select.(id, starts_with.("ref_intd")) %>% 
+  pivot_longer.(cols = -id) %>% 
+  # drop_na.() %>% 
+  # mutate.(inter_desc = ref_intd(value))
+```
+
+
+```{r}
+
+patient_list <- patient_periods %>% select.(id) %>% pull.()
+
+ptos_df %>% 
+  filter.(id %in% patient_list) %>% 
+  select.(id, starts_with.('ref_in')) %>% 
+  pivot_longer.(cols = -id) %>% 
+  filter.(!is.na(value)) %>% 
+  mutate.(value = as.double(value))
+```
+
 
 
 ```{r}
