@@ -10,6 +10,8 @@ date: "5/11/2020"
 # devtools::install_github("ultramattyice/traumaR")
 
 pacman::p_load( traumaR,
+                tidytable,
+                tidymodels,
                 ggplot2, 
                 ggthemes,
                 rlang,
@@ -17,11 +19,11 @@ pacman::p_load( traumaR,
                 gt)
 
 options(scipen=999)  #remove scientific notation
-knitr::opts_chunk$set(warning = FALSE)
+knitr::opts_chunk$set(warning = FALSE, 
+                      echo = FALSE)
 # knitr::opts_chunk$set(message = FALSE)
 # knitr::opts_chunk$set(fig.width = 12)
 # knitr::opts_chunk$set(fig.height = 10)
-knitr::opts_chunk$set(echo = FALSE)
 
 ```
 
@@ -41,26 +43,22 @@ toc()
 #AWS - 230.028 sec elapsed
 #PC -  sec elapsed
 
+
+# procedures_test <- create_proc_df(ptos_df)
+
+
 ```
 
 # Exploratory Data Analysis
 
 ## What are the patient demographics that had forearm surgery and fasciotomy? 
 
-```{r}
-ptos_df %>% 
-  select.(contains.('death'))
-
-
-```
-
-
-
 ```{r eda_1, fig.height=6, fig.width=8}
 
 patient_col_list <- list('sex',   
                          'race',
                          'age_grp',
+                         'discharge_status', 
                          'primary_injury_type',
                          'place_of_injury',
                          'forearm_fx_loc',
@@ -73,7 +71,7 @@ bar_func <- function(data, col){
   col <- rlang::sym(col)
 
   graph_results <- data %>% 
-    summarize.(total = n.(), by = c(!!col, peds_adult_flag)) %>% 
+    summarize.(total = n.(), by = c(!!col, fltr_fasciotomy)) %>% 
     ggplot(aes(x = reorder(!!col, total), y =total, label = total)) +
     geom_bar(position = "dodge", stat = "identity") + 
     geom_text(vjust = 0)+
@@ -83,7 +81,7 @@ bar_func <- function(data, col){
          y = "Count of Patients",
          x = NULL) +
     theme(axis.text.y=element_text(angle=0, hjust=1)) +
-    facet_wrap(~peds_adult_flag)
+    facet_wrap(~fltr_fasciotomy)
   
   return( graph_results)
 }
@@ -96,46 +94,158 @@ map.(patient_col_list, ~ bar_func(patient_periods, .x))
 
 ```
 
+## Predict Which Patients Will Have Fasciotomy
 
 ```{r}
+patient_periods %>% summarize.(cnt = n.(), by = fltr_fasciotomy)
 
-patient_col_list <- list('sex',   
-                         'race',
-                         'age_grp',
-                         'primary_injury_type',
-                         'place_of_injury',
-                         'forearm_fx_loc',
-                         'forearm_fx_desc',
-                         'fasciotomy_loc'
-)
-
-bar_func <- function(data, col){
-
-  col <- rlang::sym(col)
-
-  graph_results <- data %>% 
-    summarize.(total = n.(), by = c(!!col, peds_adult_flag)) %>% 
-    ggplot(aes(x = reorder(!!col, total), y =total, label = total)) +
-    geom_bar(position = "dodge", stat = "identity") + 
-    geom_text(vjust = 0)+
-    ggthemes::theme_stata() +
-    coord_flip() +
-    labs(title = toupper(expr_text(col)),
-         y = "Count of Patients",
-         x = NULL) +
-    theme(axis.text.y=element_text(angle=0, hjust=1)) +
-    facet_wrap(~peds_adult_flag)
-  
-  return( graph_results)
-}
+# Fltr_Fasciotomy will be my target variable
+model_df <- patient_periods %>% 
+  filter.(fltr_procedure == T) %>% 
+  select.(fltr_fasciotomy,  
+          everything.(), 
+          -id, 
+          -fasciotomy_loc, 
+          -zip_code, 
+          -ends_with.('_dt'), 
+          -ends_with.('_tm'), 
+          -ends_with.('_dtime')) %>% 
+  mutate.(fltr_fasciotomy = as.factor(fltr_fasciotomy)) %>%
+  mutate_across.(is.character, as.factor ) %>% 
+  mutate_across.(is.period, hour) %>% 
+  mutate_across.(is.double, ~ifelse.(is.na(.x), 0 , .x)) %>% 
+  as_tibble()
 
 
-map.(patient_col_list, ~ bar_func(patient_df, .x))
+# Create Test and Train Split on Data
+set.seed(seed = 1972) 
+train_test_split <- rsample::initial_split(data = model_df,     
+                                           prop = 0.80)
+
+train_df <- train_test_split %>% training() 
+test_df  <- train_test_split %>% testing()
+
+rec <-  recipe(fltr_fasciotomy ~ ., data = train_df) %>% 
+  # step_string2factor(all_nominal()) %>% 
+  step_dummy(all_nominal()) 
+
+# Prepping
+prepped <- rec %>% prep()
+
+# Baking
+train <- prepped %>%  juice()
+
+test <- 
+  prepped %>% 
+  bake(new_data = test_df)
+
+# ## Model specification
+# rf_mod <- set_engine()
+#   rand_forest(
+#     mode = "classification",
+#     trees = 200
+#   )
+# 
+# # Fitting
+# rf_fit <-
+#   fit(
+#     object = rf_mod,
+#     formula = formula(prepped),
+#     data = train,
+#     engine = "randomForest"
+#   )
+
+
+
+rf_new <- rand_forest(mode = 'classification') %>% 
+  set_engine('ranger', verbose = TRUE, importance = 'impurity', num.threads = 6) %>% 
+  fit(fltr_fasciotomy ~ ., data = train_df)
+
+
+rf_new
+
+# rf_fit <- fit(fltr_fasciotomy ~ ., model = rf_mod, data = test_df)
 
 
 ```
 
 
+```{r tidymodel_wf}
+
+model_df <- patient_periods %>% 
+  filter.(fltr_procedure == T) %>% 
+  select.(fltr_fasciotomy,  
+          everything.(), 
+          -id, 
+          -fasciotomy_loc, 
+          -zip_code, 
+          -ends_with.('_dt'), 
+          -ends_with.('_tm'), 
+          -ends_with.('_dtime'), 
+          -ends_with.('_time')) %>% 
+  mutate.(fltr_fasciotomy = as.factor(fltr_fasciotomy)) %>%
+  mutate_across.(is.character, as.factor ) %>% 
+  mutate_across.(is.period, hour) %>% 
+  mutate_across.(is.double, ~ifelse.(is.na(.x), 0 , .x)) %>% 
+  as_tibble()
+
+
+
+# Create Test and Train Split on Data
+set.seed(345)
+train_test_split <- rsample::initial_split(data = model_df,     
+                                           prop = 0.80)
+
+train_df <- train_test_split %>% training() 
+test_df  <- train_test_split %>% testing()
+
+# Create Cross-Validation
+folds <- vfold_cv(train_df, v = 10)
+
+rf_mod <- rand_forest(mode = 'classification') %>% 
+  set_engine('ranger', verbose = TRUE, importance = 'impurity', num.threads = 6)
+
+# rf_wf <- 
+#   workflow() %>%
+#   add_model(rf_mod) %>%
+#   add_formula(fltr_fasciotomy ~ .)
+# 
+# 
+# set.seed(456)
+# rf_fit_rs <- 
+#   rf_wf %>% 
+#   fit_resamples(folds)
+
+
+rf_fit <- rf_mod %>% 
+  fit(fltr_fasciotomy ~ ., data = train_df)
+
+rf_training_pred <- 
+  predict(rf_fit, train_df) %>% 
+  bind_cols(predict(rf_fit, train_df, type = "prob")) %>% 
+  # Add the true outcome data back in
+  bind_cols(train_df %>% 
+              select(fltr_fasciotomy))
+
+
+rf_training_pred %>% 
+  select(.pred_class, fltr_fasciotomy) %>%
+  group_by(.pred_class, fltr_fasciotomy) %>% 
+  summarize(cnt = n()) %>% 
+  pivot_wider.(fltr_fasciotomy, cnt)
+
+
+library(vip)
+library(yardstick)
+
+vip(rf_fit$fit, num_features = 40)
+
+#Accuracy Results
+rf_training_pred %>% metrics(fltr_fasciotomy, .pred_class) %>% 
+  gt() 
+
+
+```
 
 
 ```{r}
