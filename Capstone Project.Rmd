@@ -10,13 +10,8 @@ date: "4/11/2020"
 # devtools::install_github("ultramattyice/traumaR")
 
 pacman::p_load( traumaR,
-                # tidytable, 
-                # data.table, 
-                janitor, 
-                broom, 
-                tidyverse, 
+                ggplot2,
                 fpp3, 
-                lubridate, 
                 DataExplorer, 
                 gt, 
                 ggthemes,
@@ -53,26 +48,194 @@ Decided to remove any columns that only contain NA or NULL values to assist redu
 
 
 ```{r message=TRUE}
-
-raw_data <- fread("E:/Northwestern/12 - Capstone/PTOS_Data_toy.csv", na.strings = c("<unk>", "", "<n/a>")) %>%  
+tic()
+raw_data <- fread("E:/Northwestern/12 - Capstone/PTOS_Data_Toy.csv", na.strings = c("<unk>", "", "<n/a>")) %>%  
   as.data.table() 
 
 #example data for traumaR package
 #data.table::fwrite(raw_data %>% head(30000), file = "E:/Northwestern/12 - Capstone/PTOS_Toy.csv")
 
 traumaR::run_full_show(raw_data)
-
+toc()
 ```
 
-# Let's clean up the transactional data
 
-```{r data_for_analysis, paged.print=TRUE}
-
+```{r}
 trans_full_df %>% 
   filter.(id == '0616196020000001')
 
 patient_df %>% 
   filter.(id == '0616196020000001')
+
+
+
+  trans_full_df %>%
+    filter.(data_source %in% c('arrival', 'discharge')) %>%   #, 'discharge', 'transport'
+    select.(id, date, time, code_desc) %>% 
+    filter.(date != 'NA') %>% 
+    arrange.(id, date, time) %>% 
+    pivot_wider.(names_from = code_desc, values_from = c(date, time), values_fn = max) %>% 
+    rename.(arrival_dt = date_Arrival, 
+            arrival_tm = time_Arrival, 
+            discharge_dt = date_Discharge, 
+            discharge_tm = time_Discharge) %>% 
+    select(id, arrival_dt, arrival_tm, discharge_dt, discharge_tm)
+  
+    slice.(1, by = id) %>%  
+
+
+```
+
+```{r}
+patient_col_list <- list('sex', 'race', 'payor_class_primary', 'primary_injury_type', 'place_of_injury')
+
+bar_func <- function(data, col){
+
+  col <- rlang::sym(col)
+
+  something <- data %>% 
+    filter.(fltr_fasciotomy == T,
+            fltr_procedure == T) %>% 
+    summarize.(total = n.(), by = !!col) %>% 
+    ggplot(aes(x = reorder(!!col, -total), y =total)) +
+    geom_bar(position = "dodge", stat = "identity") + 
+    ggthemes::theme_stata() +
+    labs(title = toupper(expr_text(col)),
+         y = "Count of Patients",
+         x = NULL)
+  
+  return(something)
+}
+
+map.(patient_col_list, ~ bar_func(patient_df, .x))
+```
+
+
+```{r}
+
+
+create_patient_timeframe(patient_df)
+
+
+create_patient_test<- function(.patient_df) {
+
+  .patient_timeframe <- .patient_df %>%
+    filter.(fltr_fasciotomy == T,
+            fltr_procedure == T,
+    ) %>%
+    mutate_across.(ends_with.("_tm"), as.ITime) %>%
+    mutate_across.(ends_with.("_dt"), mdy) %>%
+    select.(
+      id,
+      arrival_dt,
+      arrival_tm,
+      forearm_fx_dt,
+      forearm_fx_tm,
+      fasciotomy_dt,
+      fasciotomy_tm,
+      discharge_dt,
+      discharge_tm
+    ) %>%
+    # drop_na.() %>%
+    mutate.(arrival_dtime = ymd_hms(paste(arrival_dt, arrival_tm)),
+            forearm_fx_dtime = ymd_hms(paste(forearm_fx_dt, forearm_fx_tm)),
+            fasciotomy_dtime = ymd_hms(paste(fasciotomy_dt, fasciotomy_tm)),
+            discharge_dtime = ymd_hms(paste(discharge_dt, discharge_tm)),
+            total_stay_time = as.period(interval(arrival_dtime,  discharge_dtime)),
+            arrival_to_forearm_time = as.period(interval(arrival_dtime, forearm_fx_dtime)),
+            arrival_to_fasciotomy_time = as.period(interval(arrival_dtime, fasciotomy_dtime)),
+            forearm_to_fasciotomy_time = as.period(interval(forearm_fx_dtime,  fasciotomy_dtime)),
+            fasciotomy_to_discharge_time = as.period(interval(fasciotomy_dtime,  discharge_dtime)))
+}
+
+create_patient_test(patient_df)
+
+
+#TODO
+# 1. Only use patient data that has complete time and date for arrival, procedure, and fasciotomy
+# 2. Use that to determine the typical time in between - it might be necessary to use the hosptial ID
+# 3. Use patients age, sex, and location
+# 4. Build this into the traumaR functionality
+patient_df %>% 
+  filter.(fltr_fasciotomy == T, 
+          fltr_diagnosis == T, 
+          age_in_yrs <= 16
+          ) %>%
+  mutate.(peds_adult = ifelse.(age_in_yrs <= 16, "Peds", "Adult")) %>% 
+  select.(peds_adult, id, arrival_dt, arrival_tm, forearm_fx_dt, forearm_fx_tm, fasciotomy_dt, fasciotomy_tm, discharge_dt, discharge_tm)
+```
+
+
+```{r}
+ptos_df %>%
+  select.(id, eda_time_a, eda_date_a, ref_ar_d_a, ref_ar_t_a, ref_dp_d_a, ref_dp_t_a, edl_date_a, edl_time_a, d_death_a, t_death_a) %>%
+  pivot_longer.(cols = -id) %>%
+  drop_na.() %>%
+  mutate.(type_col = ifelse.(str_detect(name, paste(c("date", "_d_", 'd_death'), collapse = '|')),'date', 'time'),
+          code_desc = case.(name == 'eda_time_a', 'Arrival' ,
+                            name == 'eda_date_a', 'Arrival' ,
+                            # name == 'ref_ar_d_a', "Arrival",
+                            # name == 'ref_ar_t_a', "Arrival",
+                            # name == 'ref_dp_d_a', "Discharge",
+                            # name == 'ref_dp_t_a', "Discharge",
+                            name == 'edl_date_a', "Discharge",
+                            name == 'edl_time_a', "Discharge",
+                            name == 'd_death_a', "Discharge",
+                            name == 't_death_a', "Discharge"),
+          loc_desc = case.(name == 'eda_time_a', "ED",
+                           name == 'eda_date_a', "ED",
+                           # name == 'ref_ar_d_a', "Referring Facility",
+                           # name == 'ref_ar_t_a', "Referring Facility",
+                           # name == 'ref_dp_d_a', "Referring Facility",
+                           # name == 'ref_dp_t_a', "Referring Facility",
+                           name == 'edl_date_a', "ED",
+                           name == 'edl_time_a', "ED",
+                           name == 'd_death_a', "Discharge/Death/Transfer",
+                           name == 't_death_a', "Discharge/Death/Transfer")) %>%
+  select.(-name) %>%
+  pivot_wider.(names_from = type_col, values_from = value, values_fn = max) %>%
+    filter.(date != 'NA') %>% 
+  mutate.(code_cd = "NA",
+          data_source = tolower(code_desc)) %>%
+  select.(id, date, time, loc_desc, code_cd, code_desc, data_source)
+
+```
+
+
+# Exploratory Data Analysis
+
+* What type of injuries lead to fasciotomys?
+* Are there certain demographics that are more susceptible to these complications? (age, sex, race, zip code)
+* Where do the most fasciotomys take place in the hosptial (loc_desc)?
+* What is the accuracy of diagnosis to procedure?
+
+
+# Let's clean up the transactional data
+
+```{r data_for_analysis, paged.print=TRUE}
+
+patient_df %>% 
+  filter.(fltr_fasciotomy == T) %>% 
+  # mutate.(age_grp = as.character(floor(age_in_yrs/10))) %>% 
+  select.(id)
+
+fasc_list <- patient_df %>%
+  filter.(fltr_fasciotomy == T) %>% 
+  select.(id)
+
+
+fasc_trans <- trans_full_df %>% 
+  filter.(id %in% pull.(fasc_list))
+
+
+patient_df %>% 
+  filter.(id == '0101190120101353' )
+
+
+fasc_trans %>% 
+  filter.(id == '0101190120101353') %>% 
+  arrange.(date, time, match(data_source, c("injury", "diagnosis", "procedure", "complication")))
+
 
 ```
 
@@ -144,6 +307,20 @@ patient_df
 ```
 
 
-
+          arrival_time = ifelse(is.na(arrival_time), emergency_dpt_time, arrival_time),
+          arrival_dt = ifelse(is.na(arrival_dt), emergency_dpt_dt, arrival_dt),
+          
+          eda_time_a #Emergency Department
+          eda_date_a
+          
+          arrival_time = ref_ar_t_a, admission from referring hospital
+          arrival_dt = ref_ar_d_a,
+          
+           'ref_dp_d_a',  'referring_facility_discharge_date',
+           'ref_dp_d_d',  'referring_facility_discharge_dt',
+           'ref_dp_t_a',  'referring_facility_discharge_tm',
+          
+          'edl_date_a',  'administratively_discharged_from_ed_date',
+          'edl_date_d',  'administratively_discharged_from_ed_dt',
 
 
