@@ -15,8 +15,11 @@ pacman::p_load( traumaR,
                 ggplot2, 
                 ggthemes,
                 rlang,
+                forcats,
                 tictoc, 
-                gt)
+                gt, 
+                vip, 
+                yardstick)
 
 options(scipen=999)  #remove scientific notation
 knitr::opts_chunk$set(warning = FALSE, 
@@ -32,22 +35,47 @@ knitr::opts_chunk$set(warning = FALSE,
 
 tic()
 
-raw_data <- fread("~/Data/PTOS_Data.csv", na.strings = c("<unk>", "", "<n/a>")) %>%  
+# raw_data <- fread("~/Data/PTOS_Data.csv", na.strings = c("<unk>", "", "<n/a>")) %>%  
+#   as.data.table() #%>%   clean_names()
+
+raw_data <- fread("E:/Northwestern/12 - Capstone/PTOS_Data.csv", na.strings = c("<unk>", "", "<n/a>")) %>%  
   as.data.table() #%>%   clean_names()
+
 
 traumaR::run_full_show(raw_data)
 
 
 toc()
 
-#AWS - 230.028 sec elapsed
-#PC -  sec elapsed
+tidytable::inv_gc()
+
+#AWS - 230.08 sec elapsed
+#PC  - 380.86 sec elapsed
 
 
-# procedures_test <- create_proc_df(ptos_df)
+##################################
+# Save files into RData Frames
+##################################
+
+dfs<- list("patient_df", "patient_periods",  "ptos_df",  "trans_flat_df" , "trans_full_df")
+file_path <- 'E:/Northwestern/12 - Capstone/PTOS_Data/'
+
+for(d in dfs) {
+    save(list=d, file=paste0(file_path,d, ".RData"))
+}
+
+##################################
+# Load all processed RData Frames
+##################################
+
+for(d in dfs) {
+    load(file = paste0(file_path,d, ".RData"))
+}
+
 
 
 ```
+
 
 # Exploratory Data Analysis
 
@@ -94,161 +122,10 @@ map.(patient_col_list, ~ bar_func(patient_periods, .x))
 
 ```
 
-## Predict Which Patients Will Have Fasciotomy
 
-```{r}
-patient_periods %>% summarize.(cnt = n.(), by = fltr_fasciotomy)
+# Forearm Surgeries that results in Fasciotomy
 
-# Fltr_Fasciotomy will be my target variable
-model_df <- patient_periods %>% 
-  filter.(fltr_procedure == T) %>% 
-  select.(fltr_fasciotomy,  
-          everything.(), 
-          -id, 
-          -fasciotomy_loc, 
-          -zip_code, 
-          -ends_with.('_dt'), 
-          -ends_with.('_tm'), 
-          -ends_with.('_dtime')) %>% 
-  mutate.(fltr_fasciotomy = as.factor(fltr_fasciotomy)) %>%
-  mutate_across.(is.character, as.factor ) %>% 
-  mutate_across.(is.period, hour) %>% 
-  mutate_across.(is.double, ~ifelse.(is.na(.x), 0 , .x)) %>% 
-  as_tibble()
-
-
-# Create Test and Train Split on Data
-set.seed(seed = 1972) 
-train_test_split <- rsample::initial_split(data = model_df,     
-                                           prop = 0.80)
-
-train_df <- train_test_split %>% training() 
-test_df  <- train_test_split %>% testing()
-
-rec <-  recipe(fltr_fasciotomy ~ ., data = train_df) %>% 
-  # step_string2factor(all_nominal()) %>% 
-  step_dummy(all_nominal()) 
-
-# Prepping
-prepped <- rec %>% prep()
-
-# Baking
-train <- prepped %>%  juice()
-
-test <- 
-  prepped %>% 
-  bake(new_data = test_df)
-
-# ## Model specification
-# rf_mod <- set_engine()
-#   rand_forest(
-#     mode = "classification",
-#     trees = 200
-#   )
-# 
-# # Fitting
-# rf_fit <-
-#   fit(
-#     object = rf_mod,
-#     formula = formula(prepped),
-#     data = train,
-#     engine = "randomForest"
-#   )
-
-
-
-rf_new <- rand_forest(mode = 'classification') %>% 
-  set_engine('ranger', verbose = TRUE, importance = 'impurity', num.threads = 6) %>% 
-  fit(fltr_fasciotomy ~ ., data = train_df)
-
-
-rf_new
-
-# rf_fit <- fit(fltr_fasciotomy ~ ., model = rf_mod, data = test_df)
-
-
-```
-
-
-```{r tidymodel_wf}
-
-model_df <- patient_periods %>% 
-  filter.(fltr_procedure == T) %>% 
-  select.(fltr_fasciotomy,  
-          everything.(), 
-          -id, 
-          -fasciotomy_loc, 
-          -zip_code, 
-          -ends_with.('_dt'), 
-          -ends_with.('_tm'), 
-          -ends_with.('_dtime'), 
-          -ends_with.('_time')) %>% 
-  mutate.(fltr_fasciotomy = as.factor(fltr_fasciotomy)) %>%
-  mutate_across.(is.character, as.factor ) %>% 
-  mutate_across.(is.period, hour) %>% 
-  mutate_across.(is.double, ~ifelse.(is.na(.x), 0 , .x)) %>% 
-  as_tibble()
-
-
-
-# Create Test and Train Split on Data
-set.seed(345)
-train_test_split <- rsample::initial_split(data = model_df,     
-                                           prop = 0.80)
-
-train_df <- train_test_split %>% training() 
-test_df  <- train_test_split %>% testing()
-
-# Create Cross-Validation
-folds <- vfold_cv(train_df, v = 10)
-
-rf_mod <- rand_forest(mode = 'classification') %>% 
-  set_engine('ranger', verbose = TRUE, importance = 'impurity', num.threads = 6)
-
-# rf_wf <- 
-#   workflow() %>%
-#   add_model(rf_mod) %>%
-#   add_formula(fltr_fasciotomy ~ .)
-# 
-# 
-# set.seed(456)
-# rf_fit_rs <- 
-#   rf_wf %>% 
-#   fit_resamples(folds)
-
-
-rf_fit <- rf_mod %>% 
-  fit(fltr_fasciotomy ~ ., data = train_df)
-
-rf_training_pred <- 
-  predict(rf_fit, train_df) %>% 
-  bind_cols(predict(rf_fit, train_df, type = "prob")) %>% 
-  # Add the true outcome data back in
-  bind_cols(train_df %>% 
-              select(fltr_fasciotomy))
-
-
-rf_training_pred %>% 
-  select(.pred_class, fltr_fasciotomy) %>%
-  group_by(.pred_class, fltr_fasciotomy) %>% 
-  summarize(cnt = n()) %>% 
-  pivot_wider.(fltr_fasciotomy, cnt)
-
-
-library(vip)
-library(yardstick)
-
-vip(rf_fit$fit, num_features = 40)
-
-#Accuracy Results
-rf_training_pred %>% metrics(fltr_fasciotomy, .pred_class) %>% 
-  gt() 
-
-
-```
-
-
-```{r}
+```{r fasciotomy_results}
 
 patient_df %>% 
   select.(forearm_fx_desc, fasciotomy_desc) %>% 
@@ -293,6 +170,264 @@ patient_df %>%
   
   
 ```
+
+## Procedure Results by Forearm Surgeries
+
+```{r}
+
+fx_list <- patient_periods %>% 
+  filter.(fltr_procedure == T) %>% 
+  select.(id, fltr_fasciotomy, fltr_procedure, sex, race, age_in_yrs, place_of_injury, cause_of_injury_e_code) %>% 
+  distinct.()
+
+fx_proc <- trans_full_df %>% 
+  mutate.(data_source = as_factor(data_source), 
+          data_source = fct_relevel(data_source, c('arrival', 'diagnosis', 'procedure', 'complications', 'discharge' ))) %>% 
+  inner_join.(fx_list, by = 'id')
+
+data_quality_check <- data.table(procedures = fx_proc %>%  distinct.(id) %>% summarize.(cnt = n.()), 
+                      patients = fx_list %>% summarize.(cnt = n.())) %>% 
+  mutate.(diff = patients.cnt - procedures.cnt)
+
+data_quality_check
+
+tidytable::inv_gc()
+
+fx_proc <- fx_proc %>% 
+  arrange.(id, date, data_source, time ) %>% 
+  filter.(data_source %in% c('procedure', 'diagnosis', 'discharge', 'complications', 'arrival'))  %>% 
+  mutate.(index = seq_len(.N), by = id ) %>% 
+  select.(index, id, everything.()) 
+
+
+fx_proc %>% 
+  count(fltr_fasciotomy) %>% 
+  mutate(props = n/sum(n))
+
+
+```
+
+```{r}
+train_df %>% 
+  count(age_in_yrs) %>% 
+  mutate(props = n/sum(n)) %>% 
+  arrange(-n)
+  
+```
+
+
+
+## Predict Which Patients Will Have Fasciotomy
+
+```{r}
+
+# Fltr_Fasciotomy will be my target variable
+model_df <- fx_proc %>% 
+  
+  # select.(fltr_fasciotomy, sex, race, age_in_yrs ) %>% 
+  # filter.(date != 'character(0)') %>% 
+  mutate.(fltr_fasciotomy = ifelse.(fltr_fasciotomy == T, 1, 0)) %>%
+  mutate.( #fltr_fasciotomy = as_factor(fltr_fasciotomy),
+          date = lubridate::mdy(date), 
+          dow = lubridate::wday(date, label = TRUE)) %>%
+  select.(-date, -time, -index, -cause_of_injury_e_code, -code_cd) %>% 
+  as_tibble() 
+# %>% 
+#   mutate(date = mdy(date))
+
+
+
+
+tidytable::inv_gc()
+
+# Create Test and Train Split on Data
+set.seed(seed = 1972) 
+train_test_split <- rsample::initial_split(data = model_df,     
+                                           prop = 0.75)
+
+train_df <- train_test_split %>% training() 
+test_df  <- train_test_split %>% testing()
+
+
+train_df %>% 
+  count(fltr_fasciotomy) %>% 
+  mutate(props = n/sum(n))
+
+test_df %>% 
+  count(fltr_fasciotomy) %>% 
+  mutate(props = n/sum(n))
+
+
+lr_rec <-  recipe(fltr_fasciotomy ~ ., data = train_df) %>% 
+  update_role(id, new_role = 'ID' ) %>% 
+  # step_date(date, features = c("dow", "month")) %>% 
+  # step_holiday(date, holidays = timeDate::listHolidays('US')) %>% 
+  step_dummy(all_nominal(), -all_outcomes()) %>% 
+  step_zv(all_predictors()) %>% 
+  # step_rm(date) %>% 
+  step_naomit(all_predictors())
+
+lr_rec %>% summary()
+
+lr_mod <- logistic_reg() %>% set_engine("glm") 
+
+rf_mod <- rand_forest(mode = 'classification') %>% 
+  set_engine('ranger', verbose = TRUE, importance = 'impurity', num.threads = 6)
+
+lr_wflow <- workflow() %>% 
+  # add_model(rf_mod) %>% 
+  add_model(lr_mod) %>%
+  add_recipe(lr_rec)
+
+lr_fit <- lr_wflow %>% 
+  fit( data = train_df)
+
+lr_fit %>%
+  pull_workflow_fit() %>% 
+  tidy()
+
+lr_pred <- predict(lr_fit, test_df) %>% 
+  bind_cols(test_df)
+
+
+lr_pred %>% 
+  roc_curve(truth = fltr_fasciotomy, .pred_class ) %>% 
+  autoplot()
+
+```
+
+
+```{r tidymodel_wf}
+
+# 
+# 
+# # Prepping
+# prepped <- rec %>% prep()
+# 
+# # Baking
+# train <- prepped %>%  juice()
+# 
+# test <- 
+#   prepped %>% 
+#   bake(new_data = test_df)
+# 
+# # ## Model specification
+# # rf_mod <- set_engine()
+# #   rand_forest(
+# #     mode = "classification",
+# #     trees = 200
+# #   )
+# # 
+# # # Fitting
+# # rf_fit <-
+# #   fit(
+# #     object = rf_mod,
+# #     formula = formula(prepped),
+# #     data = train,
+# #     engine = "randomForest"
+# #   )
+# 
+# 
+# 
+# rf_new <- rand_forest(mode = 'classification') %>% 
+#   set_engine('ranger', verbose = TRUE, importance = 'impurity', num.threads = 6) %>% 
+#   fit(fltr_fasciotomy ~ ., data = train_df)
+# 
+# 
+# rf_new
+# 
+# # rf_fit <- fit(fltr_fasciotomy ~ ., model = rf_mod, data = test_df)
+# model_df %>% head()
+# 
+
+
+
+# model_df <- patient_periods %>% 
+#   filter.(fltr_procedure == T) %>% 
+#   select.(fltr_fasciotomy,  
+#           everything.(), 
+#           -id, 
+#           -fasciotomy_loc, 
+#           -zip_code, 
+#           -ends_with.('_dt'), 
+#           -ends_with.('_tm'), 
+#           -ends_with.('_dtime'), 
+#           -ends_with.('_time')) %>% 
+#   mutate.(fltr_fasciotomy = as.factor(fltr_fasciotomy)) %>%
+#   mutate_across.(is.character, as.factor ) %>% 
+#   mutate_across.(is.period, hour) %>% 
+#   mutate_across.(is.double, ~ifelse.(is.na(.x), 0 , .x)) %>% 
+#   as_tibble()
+
+
+model_df <- fx_proc %>% 
+  select.(fltr_fasciotomy,  
+          everything.(), 
+          -id,
+          -date, 
+          -time, 
+          -code_cd,
+          -fltr_procedure) %>% 
+  mutate.(fltr_fasciotomy = as.factor(fltr_fasciotomy)) %>%
+  mutate_across.(is.character, as.factor ) %>% 
+  mutate_across.(is.double, ~ifelse.(is.na(.x), 0 , .x)) %>% 
+  as_tibble()
+# Create Test and Train Split on Data
+set.seed(345)
+train_test_split <- rsample::initial_split(data = model_df,     
+                                           prop = 0.80)
+
+train_df <- train_test_split %>% training() 
+test_df  <- train_test_split %>% testing()
+
+# Create Cross-Validation
+# folds <- vfold_cv(train_df, v = 10)
+
+rf_mod <- rand_forest(mode = 'classification') %>% 
+  set_engine('ranger', verbose = TRUE, importance = 'impurity', num.threads = 6)
+
+# rf_wf <- 
+#   workflow() %>%
+#   add_model(rf_mod) %>%
+#   add_formula(fltr_fasciotomy ~ .)
+# 
+# 
+# set.seed(456)
+# rf_fit_rs <- 
+#   rf_wf %>% 
+#   fit_resamples(folds)
+
+
+rf_fit <- rf_mod %>% 
+  fit(fltr_fasciotomy ~ ., data = train_df)
+
+rf_training_pred <- 
+  predict(rf_fit, train_df) %>% 
+  bind_cols(predict(rf_fit, train_df, type = "prob")) %>% 
+  # Add the true outcome data back in
+  bind_cols(train_df %>% 
+              select(fltr_fasciotomy))
+
+
+rf_training_pred %>% 
+  select(.pred_class, fltr_fasciotomy) %>%
+  group_by(.pred_class, fltr_fasciotomy) %>% 
+  summarize(cnt = n()) %>% 
+  pivot_wider.(fltr_fasciotomy, cnt)
+
+
+
+
+vip(rf_fit$fit, num_features = 40)
+
+#Accuracy Results
+rf_training_pred %>% metrics(fltr_fasciotomy, .pred_class) %>% 
+  gt() 
+
+
+```
+
+
 
 
 
