@@ -8,6 +8,7 @@ date: "5/11/2020"
 
 # devtools::install_github("markfairbanks/tidytable")
 # devtools::install_github("ultramattyice/traumaR")
+# devtools::install_github("r-lib/vctrs", INSTALL_opts = "--no-multiarch")
 
 pacman::p_load( traumaR,
                 tidytable,
@@ -30,17 +31,21 @@ knitr::opts_chunk$set(warning = FALSE,
 
 ```
 
+
 ## Load Multiple Data Sources
 ```{r load_data}
 
 tic()
 
-# raw_data <- fread("~/Data/PTOS_Data.csv", na.strings = c("<unk>", "", "<n/a>")) %>%  
+# raw_data <- fread("~/Data/PTOS_Data.csv", na.strings = c("<unk>", "", "<n/a>")) %>%
 #   as.data.table() #%>%   clean_names()
 
-raw_data <- fread("E:/Northwestern/12 - Capstone/PTOS_Data.csv", na.strings = c("<unk>", "", "<n/a>")) %>%  
+raw_data <- fread("E:/Northwestern/12 - Capstone/PTOS_Data.csv", na.strings = c("<unk>", "", "<n/a>")) %>%
   as.data.table() #%>%   clean_names()
 
+# 
+# raw_data <- fread("E:/Northwestern/12 - Capstone/PTOS_Toy.csv", na.strings = c("<unk>", "", "<n/a>")) %>%  
+#   as.data.table() #%>%   clean_names()
 
 traumaR::run_full_show(raw_data)
 
@@ -76,7 +81,6 @@ for(d in dfs) {
 
 ```
 
-
 # Exploratory Data Analysis
 
 ## What are the patient demographics that had forearm surgery and fasciotomy? 
@@ -88,6 +92,7 @@ patient_col_list <- list('sex',
                          'age_grp',
                          'discharge_status', 
                          'primary_injury_type',
+                         'injury_desc', 
                          'place_of_injury',
                          'forearm_fx_loc',
                          'forearm_fx_desc',
@@ -99,6 +104,7 @@ bar_func <- function(data, col){
   col <- rlang::sym(col)
 
   graph_results <- data %>% 
+    filter.(fltr_fasciotomy == T) %>% 
     summarize.(total = n.(), by = c(!!col, fltr_fasciotomy)) %>% 
     ggplot(aes(x = reorder(!!col, total), y =total, label = total)) +
     geom_bar(position = "dodge", stat = "identity") + 
@@ -173,16 +179,16 @@ patient_df %>%
 
 ## Procedure Results by Forearm Surgeries
 
-```{r}
+```{r proc}
 
 fx_list <- patient_periods %>% 
-  filter.(fltr_procedure == T) %>% 
-  select.(id, fltr_fasciotomy, fltr_procedure, sex, race, age_in_yrs, place_of_injury, cause_of_injury_e_code) %>% 
+  # filter.(fltr_procedure == T) %>% 
+  select.(id, fltr_fasciotomy, fltr_procedure, sex, race, age_in_yrs, injury_desc) %>% 
   distinct.()
 
 fx_proc <- trans_full_df %>% 
   mutate.(data_source = as_factor(data_source), 
-          data_source = fct_relevel(data_source, c('arrival', 'diagnosis', 'procedure', 'complications', 'discharge' ))) %>% 
+          data_source = fct_relevel(data_source, c('arrival/discharge', 'diagnosis', 'procedure', 'complications' ))) %>% 
   inner_join.(fx_list, by = 'id')
 
 data_quality_check <- data.table(procedures = fx_proc %>%  distinct.(id) %>% summarize.(cnt = n.()), 
@@ -195,62 +201,69 @@ tidytable::inv_gc()
 
 fx_proc <- fx_proc %>% 
   arrange.(id, date, data_source, time ) %>% 
-  filter.(data_source %in% c('procedure', 'diagnosis', 'discharge', 'complications', 'arrival'))  %>% 
+  filter.(data_source %notin% c('transport', 'arrival/discharge'))  %>% 
   mutate.(index = seq_len(.N), by = id ) %>% 
   select.(index, id, everything.()) 
 
 
 fx_proc %>% 
-  count(fltr_fasciotomy) %>% 
+  count(data_source) %>% 
   mutate(props = n/sum(n))
 
 
 ```
 
+
+## Woe Binning
 ```{r}
-train_df %>% 
-  count(age_in_yrs) %>% 
-  mutate(props = n/sum(n)) %>% 
-  arrange(-n)
-  
+
+
+library(woeBinning)
+
+df <- fx_proc %>% 
+  drop_na.() %>% 
+  select(fltr_fasciotomy, subchapter_desc, injury_desc, code_desc) %>% 
+  mutate(subchapter_desc = as.factor(subchapter_desc), 
+         injury_desc = as.factor(injury_desc)) 
+
+binning <- woe.tree.binning(df, 
+                 target.var = 'fltr_fasciotomy', 
+                 pred.var = 'subchapter_desc',  
+                 event.class='TRUE')
+
+
+woe.binning.plot(binning)
+tabulate.binning <- woe.binning.table(binning)
+tabulate.binning
+
 ```
 
+## Using TidyModel FrameWork from Max Kuhn
+* Need to bin the procedures together
+* Need to bin the injuries together
 
+```{r tidymodel_wf}
 
-## Predict Which Patients Will Have Fasciotomy
-
-```{r}
-
-# Fltr_Fasciotomy will be my target variable
 model_df <- fx_proc %>% 
-  
-  # select.(fltr_fasciotomy, sex, race, age_in_yrs ) %>% 
-  # filter.(date != 'character(0)') %>% 
-  mutate.(fltr_fasciotomy = ifelse.(fltr_fasciotomy == T, 1, 0)) %>%
-  mutate.( #fltr_fasciotomy = as_factor(fltr_fasciotomy),
-          date = lubridate::mdy(date), 
-          dow = lubridate::wday(date, label = TRUE)) %>%
-  select.(-date, -time, -index, -cause_of_injury_e_code, -code_cd) %>% 
-  as_tibble() 
-# %>% 
-#   mutate(date = mdy(date))
+  mutate.(fltr_fasciotomy = as_factor(fltr_fasciotomy),
+          # date = lubridate::mdy(date), 
+          # dow = as_factor(lubridate::wday(date, label = TRUE))
+          ) %>%
+  select.(-date, -time, -index, -code_desc, -code_cd, -id, -data_source, -chapter_desc, -fltr_procedure) %>% 
+  as_tibble() %>% 
+  na.omit() %>% 
+  head(2000)
 
 
-
-
-tidytable::inv_gc()
-
-# Create Test and Train Split on Data
-set.seed(seed = 1972) 
-train_test_split <- rsample::initial_split(data = model_df,     
-                                           prop = 0.75)
+set.seed(123)
+train_test_split <- rsample::initial_split(data = model_df, 
+                                           strata = injury_desc)
 
 train_df <- train_test_split %>% training() 
 test_df  <- train_test_split %>% testing()
 
-
 train_df %>% 
-  count(fltr_fasciotomy) %>% 
+  count(loc_desc) %>% 
   mutate(props = n/sum(n))
 
 test_df %>% 
@@ -258,198 +271,70 @@ test_df %>%
   mutate(props = n/sum(n))
 
 
-lr_rec <-  recipe(fltr_fasciotomy ~ ., data = train_df) %>% 
-  update_role(id, new_role = 'ID' ) %>% 
-  # step_date(date, features = c("dow", "month")) %>% 
-  # step_holiday(date, holidays = timeDate::listHolidays('US')) %>% 
+set.seed(234)
+val_set <- validation_split(train_df, 
+                            strata = injury_desc,
+                            prop = 0.80)
+val_set
+
+cores <- parallel::detectCores()-1
+
+rf_mod <- 
+  rand_forest(mtry = tune(), min_n = tune(), trees = 1000) %>% 
+  set_engine("ranger", num.threads = cores) %>% 
+  set_mode("classification")
+
+rf_recipe <- 
+  recipe(fltr_fasciotomy ~ ., data = train_df) %>%
+  # check_missing(subchapter_desc, injury_desc ) %>% 
+  # update_role(chapter_desc, fltr_procedure, new_role = 'ID' ) %>% 
   step_dummy(all_nominal(), -all_outcomes()) %>% 
   step_zv(all_predictors()) %>% 
-  # step_rm(date) %>% 
-  step_naomit(all_predictors())
+  step_naomit(all_predictors()) %>% 
+  step_novel(all_nominal()) %>% 
+  step_modeimpute(all_nominal())
 
-lr_rec %>% summary()
-
-lr_mod <- logistic_reg() %>% set_engine("glm") 
-
-rf_mod <- rand_forest(mode = 'classification') %>% 
-  set_engine('ranger', verbose = TRUE, importance = 'impurity', num.threads = 6)
-
-lr_wflow <- workflow() %>% 
-  # add_model(rf_mod) %>% 
-  add_model(lr_mod) %>%
-  add_recipe(lr_rec)
-
-lr_fit <- lr_wflow %>% 
-  fit( data = train_df)
-
-lr_fit %>%
-  pull_workflow_fit() %>% 
-  tidy()
-
-lr_pred <- predict(lr_fit, test_df) %>% 
-  bind_cols(test_df)
+rf_workflow <- 
+  workflow() %>% 
+  add_model(rf_mod) %>% 
+  add_recipe(rf_recipe)
 
 
-lr_pred %>% 
-  roc_curve(truth = fltr_fasciotomy, .pred_class ) %>% 
-  autoplot()
+rf_mod %>%    
+  parameters()
 
-```
-
-
-```{r tidymodel_wf}
-
-# 
-# 
-# # Prepping
-# prepped <- rec %>% prep()
-# 
-# # Baking
-# train <- prepped %>%  juice()
-# 
-# test <- 
-#   prepped %>% 
-#   bake(new_data = test_df)
-# 
-# # ## Model specification
-# # rf_mod <- set_engine()
-# #   rand_forest(
-# #     mode = "classification",
-# #     trees = 200
-# #   )
-# # 
-# # # Fitting
-# # rf_fit <-
-# #   fit(
-# #     object = rf_mod,
-# #     formula = formula(prepped),
-# #     data = train,
-# #     engine = "randomForest"
-# #   )
-# 
-# 
-# 
-# rf_new <- rand_forest(mode = 'classification') %>% 
-#   set_engine('ranger', verbose = TRUE, importance = 'impurity', num.threads = 6) %>% 
-#   fit(fltr_fasciotomy ~ ., data = train_df)
-# 
-# 
-# rf_new
-# 
-# # rf_fit <- fit(fltr_fasciotomy ~ ., model = rf_mod, data = test_df)
-# model_df %>% head()
-# 
-
-
-
-# model_df <- patient_periods %>% 
-#   filter.(fltr_procedure == T) %>% 
-#   select.(fltr_fasciotomy,  
-#           everything.(), 
-#           -id, 
-#           -fasciotomy_loc, 
-#           -zip_code, 
-#           -ends_with.('_dt'), 
-#           -ends_with.('_tm'), 
-#           -ends_with.('_dtime'), 
-#           -ends_with.('_time')) %>% 
-#   mutate.(fltr_fasciotomy = as.factor(fltr_fasciotomy)) %>%
-#   mutate_across.(is.character, as.factor ) %>% 
-#   mutate_across.(is.period, hour) %>% 
-#   mutate_across.(is.double, ~ifelse.(is.na(.x), 0 , .x)) %>% 
-#   as_tibble()
-
-
-model_df <- fx_proc %>% 
-  select.(fltr_fasciotomy,  
-          everything.(), 
-          -id,
-          -date, 
-          -time, 
-          -code_cd,
-          -fltr_procedure) %>% 
-  mutate.(fltr_fasciotomy = as.factor(fltr_fasciotomy)) %>%
-  mutate_across.(is.character, as.factor ) %>% 
-  mutate_across.(is.double, ~ifelse.(is.na(.x), 0 , .x)) %>% 
-  as_tibble()
-# Create Test and Train Split on Data
 set.seed(345)
-train_test_split <- rsample::initial_split(data = model_df,     
-                                           prop = 0.80)
+rf_res <- 
+  rf_workflow %>% 
+  tune_grid(val_set,
+            grid = 10,
+            control = control_grid(save_pred = TRUE),
+            metrics = metric_set(roc_auc))
 
-train_df <- train_test_split %>% training() 
-test_df  <- train_test_split %>% testing()
+rf_res %>% 
+  show_best(metric = "roc_auc")
 
-# Create Cross-Validation
-# folds <- vfold_cv(train_df, v = 10)
-
-rf_mod <- rand_forest(mode = 'classification') %>% 
-  set_engine('ranger', verbose = TRUE, importance = 'impurity', num.threads = 6)
-
-# rf_wf <- 
-#   workflow() %>%
-#   add_model(rf_mod) %>%
-#   add_formula(fltr_fasciotomy ~ .)
-# 
-# 
-# set.seed(456)
-# rf_fit_rs <- 
-#   rf_wf %>% 
-#   fit_resamples(folds)
+# autoplot(rf_res)
 
 
-rf_fit <- rf_mod %>% 
-  fit(fltr_fasciotomy ~ ., data = train_df)
+rf_best <- 
+  rf_res %>% 
+  select_best(metric = "roc_auc")
 
-rf_training_pred <- 
-  predict(rf_fit, train_df) %>% 
-  bind_cols(predict(rf_fit, train_df, type = "prob")) %>% 
-  # Add the true outcome data back in
-  bind_cols(train_df %>% 
-              select(fltr_fasciotomy))
+rf_auc <- 
+  rf_res %>% 
+  collect_predictions(parameters = rf_best) %>% 
+  roc_curve(fltr_fasciotomy, .pred) %>% 
+  mutate(model = "Random Forest")
 
+rf_auc %>% 
+# bind_rows(rf_auc, lr_auc) %>% 
+  ggplot(aes(x = 1 - specificity, y = sensitivity, col = model)) + 
+  geom_path(lwd = 1.5, alpha = 0.8) +
+  geom_abline(lty = 3) + 
+  coord_equal() + 
+  scale_color_viridis_d(option = "plasma", end = .6)
 
-rf_training_pred %>% 
-  select(.pred_class, fltr_fasciotomy) %>%
-  group_by(.pred_class, fltr_fasciotomy) %>% 
-  summarize(cnt = n()) %>% 
-  pivot_wider.(fltr_fasciotomy, cnt)
-
-
-
-
-vip(rf_fit$fit, num_features = 40)
-
-#Accuracy Results
-rf_training_pred %>% metrics(fltr_fasciotomy, .pred_class) %>% 
-  gt() 
-
-
-```
-
-
-
-
-
-```{r}
-ptos_df %>% 
-  select.(id, starts_with.("ref_intd")) %>% 
-  pivot_longer.(cols = -id) %>% 
-  # drop_na.() %>% 
-  # mutate.(inter_desc = ref_intd(value))
-```
-
-
-```{r}
-
-patient_list <- patient_periods %>% select.(id) %>% pull.()
-
-ptos_df %>% 
-  filter.(id %in% patient_list) %>% 
-  select.(id, starts_with.('ref_in')) %>% 
-  pivot_longer.(cols = -id) %>% 
-  filter.(!is.na(value)) %>% 
-  mutate.(value = as.double(value))
 ```
 
 
@@ -541,141 +426,5 @@ ggplot(data, aes(fill=condition, y=value, x=specie)) +
 ```
 
 
-```{r}
 
-  trans_full_df %>%
-    filter.(data_source %in% c('arrival', 'discharge', 'transport')) %>%   #, 'discharge', 'transport'
-    select.(id, date, time, code_desc, data_source, loc_desc) %>% 
-    filter.(date != 'NA') %>% 
-    arrange.(id, date, time) %>% 
-    pivot_wider.(names_from = code_desc, values_from = c(date, time), values_fn = max)
-```
-
-
-```{r data_for_analysis}
-
-patient_df %>% 
-  filter.(id == '0616196020000001') %>% t()
-  filter.(fltr_fasciotomy == T)  %>% 
-  t() 
- 
-
-```
-
-
-```{r}
-
-# 0101190120101353
-ptos_df %>%  
-  select.(id, starts_with.("ref_"), starts_with.("eda_")) %>% 
-  filter.(id == '0101190120101353') %>% View()
-```
-
-
-
-```{r}
- 
-
-ptos_df %>% 
-  select.(id, eda_time_a, eda_date_a, ref_ar_d_a, ref_ar_t_a, ref_dp_d_a, ref_dp_t_a, edl_date_a, edl_time_a) %>% head(100) %>% 
-  # filter.(id == '0101190120101353') %>% 
-  pivot_longer.(cols = -id) %>% 
-  drop_na.() %>% 
-  mutate.(type_col = ifelse.(str_detect(name, paste(c("date", "_d_"), collapse = '|')),'date', 'time'),
-          code_desc = case.(name == 'eda_time_a', 'Arrival' ,
-                          name == 'eda_date_a', 'Arrival' ,
-                          name == 'ref_ar_d_a', "Arrival", 
-                          name == 'ref_ar_t_a', "Arrival", 
-                          name == 'ref_dp_d_a', "Discharge", 
-                          name == 'ref_dp_t_a', "Discharge", 
-                          name == 'edl_date_a', "Discharge", 
-                          name == 'edl_time_a', "Discharge"),
-          loc_desc = case.(name == 'eda_time_a', "ED", 
-                           name == 'eda_date_a', "ED", 
-                           name == 'ref_ar_d_a', "Referring Facility", 
-                           name == 'ref_ar_t_a', "Referring Facility",
-                           name == 'ref_dp_d_a', "Referring Facility", 
-                           name == 'ref_dp_t_a', "Referring Facility", 
-                           name == 'edl_date_a', "ED", 
-                           name == 'edl_time_a', "ED")) %>% 
-  select.(-name) %>% 
-  pivot_wider.(names_from = type_col, values_from = value) %>% 
-  mutate.(code_cd = "NA", 
-          data_source = code_desc) %>% 
-  select.(id, date, time, loc_desc, code_cd, code_desc, data_source)
-
-        # arrival_time = ifelse(is.na(arrival_time), emergency_dpt_time, arrival_time),
-        #   arrival_dt = ifelse(is.na(arrival_dt), emergency_dpt_dt, arrival_dt),
-        #   
-        #   eda_time_a #Emergency Department
-        #   eda_date_a
-        #   
-        #   arrival_time = ref_ar_t_a, admission from referring hospital
-        #   arrival_dt = ref_ar_d_a,
-          
-          #  'ref_dp_d_a',  'referring_facility_discharge_date',
-          #  'ref_dp_d_d',  'referring_facility_discharge_dt',
-          #  'ref_dp_t_a',  'referring_facility_discharge_tm',
-          # 
-          # 'edl_date_a',  'administratively_discharged_from_ed_date',
-          # 'edl_date_d',  'administratively_discharged_from_ed_dt',
-
-```
-
-```{r}
-
-ptos_df %>% 
-  select.(id, starts_with.("pre_")) %>% head(100) %>% 
-  # filter.(id == '0101190120101353') %>% 
-  pivot_longer.(cols = -id) %>% 
-  drop_na.() %>% 
-  mutate.(type_col = ifelse.(str_detect(name, "_ta"),'time', 'date'), 
-          loc_desc = case.(name == 'pre_1_a_da', 'transport arrive at scene',
-                           name == 'pre_1_a_ta', 'transport arrive at scene',
-                           name == 'pre_1_d_da', 'transport dispatch',
-                           name == 'pre_1_d_ta', 'transport dispatch',
-                           name == 'pre_1_l_da', 'transport leave scene',
-                           name == 'pre_1_l_ta', 'transport leave scene',
-                           name == 'pre_r_a_da', 'interhospital transport arrive at referring facility',
-                           name == 'pre_r_a_ta', 'interhospital transport arrive at referring facility',
-                           name == 'pre_r_d_da', 'interhospital transport dispatch',
-                           name == 'pre_r_d_ta', 'interhospital transport dispatch',
-                           name == 'pre_r_l_da', 'interhospital transport leave referring facility',
-                           name == 'pre_r_l_ta', 'interhospital transport leave referring facility',
-                           name == 'pre_s_a_da', 'scene provider arrive at scene',
-                           name == 'pre_s_a_ta', 'scene provider arrive at scene',
-                           name == 'pre_s_d_da', 'scene provider dispatch',
-                           name == 'pre_s_d_ta', 'scene provider dispatch',
-                           name == 'pre_s_l_da', 'scene provider leave scene',
-                           name == 'pre_s_l_ta', 'scene provider leave scene'),
-          code_desc = "transport") %>% 
-  select.(-name) %>% 
-  pivot_wider.(names_from = type_col, values_from = value) %>% 
-  mutate.(code_cd = "NA", 
-          data_source = code_desc) %>% 
-  select.(id, date, time, loc_desc, code_cd, code_desc, data_source)
-
-
-```
-
-
-
-                       names == 'pre_1_a_da',  'arrive_at_scene',
-                       names == 'pre_1_a_ta',  'arrive_at_scene',
-                       names == 'pre_1_d_da',  'transport_dispatch',
-                       names == 'pre_1_d_ta',  'transport_dispatch',
-                       names == 'pre_1_l_da',  'transport_leave_scene',
-                       names == 'pre_1_l_ta',  'transport_leave_scene',
-                       names == 'pre_r_a_da',  'interhospital_transport_arrive_at_referring_facility',
-                       names == 'pre_r_a_ta',  'interhospital_transport_arrive_at_referring_facility',
-                       names == 'pre_r_d_da',  'interhospital_transport_dispatch',
-                       names == 'pre_r_d_ta',  'interhospital_transport_dispatch',
-                       names == 'pre_r_l_da',  'interhospital_transport_leave_referring_facility',
-                       names == 'pre_r_l_ta',  'interhospital_transport_leave_referring_facility',
-                       names == 'pre_s_a_da',  'scene_provider_arrive_at_scene',
-                       names == 'pre_s_a_ta',  'scene_provider_arrive_at_scene',
-                       names == 'pre_s_d_da',  'scene_provider_dispatch',
-                       names == 'pre_s_d_ta',  'scene_provider_dispatch',
-                       names == 'pre_s_l_da',  'scene_provider_leave_scene',
-                       names == 'pre_s_l_ta',  'scene_provider_leave_scene',
 
