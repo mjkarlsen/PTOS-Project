@@ -1,0 +1,119 @@
+---
+title: "Initial Findings"
+subtitle: 'Compartment Syndrome in Pediatric Patients'
+author: "Matt Carlson"
+date: "5/17/2020"
+---
+
+
+```{r setup}
+pacman::p_load( traumaR,
+                tidytable,
+                tidymodels,
+                ggplot2, 
+                ggthemes,
+                rlang,
+                forcats,
+                tictoc, 
+                gt, 
+                vip, 
+                yardstick)
+
+options(scipen=999)  #remove scientific notation
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE)
+```
+
+
+```{r load_data, eval=FALSE, include=FALSE}
+
+knitr::knit_global()
+
+dfs<- list("patient_df", "patient_periods",  "ptos_df",  "trans_flat_df" , "trans_full_df")
+file_path <- 'E:/Northwestern/12 - Capstone/PTOS_Data/'
+
+
+for(d in dfs) {
+  if (exists(d) && is.data.frame(get(d))) next(d)
+  else load(file = paste0(file_path,d, ".RData"))
+}
+
+
+```
+
+# Project Objective
+The objective is to identify the likelihood of acute compartment syndrome (CS) in pediatric patients (less than seventeen years old) who suffered from forearm fractures, ultimately resulting in CS. I plan to study those who likely had more severe injuries or who had an unacceptable result from their treatment in the emergency department (ED).  The majority of forearm fractures in children are treated with closed reduction and casting, then discharged from the ED.  
+
+## What is Compartment Syndrome?
+Compartment syndrome (CS) refers to the increased pressure inside the section of the limb that contains muscles, nerves, and blood vessels. This increased pressure results in the reduction of blood supply and tissue necrosis. It usually develops in the lower leg and forearm after traumas like a bone fracture. If not treated in time, it can lead to permanent muscle and nerve damage. 
+
+CS typically develops after surgery or trauma, causing excessive fluid in the fascia, causing pressure and pain in the affected limb. The decreased circulation causes the muscle can die, resulting in permanent damage left untreated. Treatment of compartment syndrome is a fasciotomy or removal of external compression, which can relieve the pressure and maintains blood flow to the muscle. 
+
+# Data Overview
+The primary data comes from the **Pennsylvania Trauma Outcome System** (PTOS), which contains results from 2010 - 2015. There are approximately 530k anonymized patient records and 1,400 columns of descriptive information regarding each procedure. The data requires a significant amount of manipulation to normalize and prepare it for analysis. Furthermore, I will separate the initial PTOS data into normalized data structures focused on demographics, prehospital, medical procedures, and outcomes.  The PTOS data uses medical coding to classify causes of injury, examination results, processes, and treatments. I will use the International Statistical Classification of Diseases and Related Health Problems (ICD) data to translate codes into descriptive terms accurately.
+
+## Data Wrangling
+I created an R Package, [traumaR](https://github.com/mjkarlsen/traumaR), and hosted it in a GitHub repo. This allows for repeatable analysis and creates safeguards from any potential mishaps with coding failures. This package stores all of the data wrangling procedures and over **50** custom functions designed to translate the medical codes into human friendly descriptions. 
+
+### Raw Data Structure
+The PTOS raw data is structured so that each patients information is found on the same row. For example, if a patient has five surgical procedures those results would be shown across 5 different columns. This data structure introduced many challenges for identifying patterns in surgical sequencing. Here is a sample of the raw data. 
+
+```{r ptos_example, paged.print=FALSE}
+ptos_df %>% as.tibble() %>% head(10) 
+```
+
+It was necessary to transpose this information using [tidytable](https://github.com/markfairbanks/tidytable) which handles large data sets. I decided to transpose After identifying which columns had relevant, I transposed the surgical events listed below using their patient id, date, time, location, surgical code, surgical code description.
+
+* Arrival to hospital
+* Medical Diagnosis
+* Surgical Procedures
+* Complications Post Surgery
+* Discharge
+
+```{r trans_example, paged.print=FALSE}
+
+trans_full_df %>% as_tibble() %>% head()
+
+```
+
+## PTOS Exploratory Data Analysis
+I decided to filter for patients that had a forearm fracture which led to compartment syndrome complications which required a fasciotomy. The primarly objective of this analysis is to understand these complications in pediatric patients (less than 17 years of age) however, it is beneficial to compare the count of patients against the adult population. 
+
+```{r eval=FALSE, include=FALSE}
+patient_df_list <- list('sex',   
+                         'race',
+                         'fall_height',
+                         'primary_injury_type',
+                         'injury_desc', 
+                         'place_of_injury')
+
+bar_func <- function(data, col){
+
+  col <- rlang::sym(col)
+
+  graph_results <- data %>% 
+    filter.(fltr_fasciotomy == T) %>%
+    filter.(fltr_procedure == T) %>%
+    summarize.(total = n.(), by = c(!!col, peds_adult_flag)) %>% 
+    arrange.(-total) %>% 
+    slice.(1:10) %>% 
+    na.omit() %>% 
+    ggplot(aes(x = reorder(!!col, total), y =total, fill = peds_adult_flag, label = total)) +
+    geom_bar(position = "dodge", stat = "identity") +
+    scale_fill_manual(values=c("#999999", "#56B4E9"))+
+    geom_text(hjust = 'left', y = 0)+
+    ggthemes::theme_few() +
+    coord_flip() +
+    labs(title = toupper(expr_text(col)),
+         y = "Count of Patients",
+         x = NULL) +
+    theme(axis.text.y=element_text(angle=0, hjust=1), legend.position = "none") +
+    scale_x_discrete(labels = function(x) str_wrap(x, width = 30)) +
+    facet_wrap(~peds_adult_flag, scales = "free_x")
+  
+  return( graph_results)
+}
+
+
+map.(patient_df_list, ~ bar_func(patient_df, .x))
+```
+

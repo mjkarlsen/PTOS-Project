@@ -87,17 +87,26 @@ for(d in dfs) {
 
 ```{r eda_1, fig.height=6, fig.width=8}
 
-patient_col_list <- list('sex',   
+
+# fx_list <- patient_periods %>% 
+#   filter.(fltr_fasciotomy == T) %>% 
+#   select.(id, fltr_fasciotomy, sex, race, age_in_yrs, injury_desc, peds_adult_flag) %>% 
+#   distinct.()
+# 
+# fx_proc <- trans_full_df %>% 
+#   mutate.(data_source = as_factor(data_source), 
+#           data_source = fct_relevel(data_source, c('arrival/discharge', 'diagnosis', 'procedure', 'complications' ))) %>% 
+#   inner_join.(fx_list, by = 'id')
+
+patient_df_list <- list('sex',   
                          'race',
-                         'age_grp',
-                         'discharge_status', 
+                         'fall_height',
                          'primary_injury_type',
                          'injury_desc', 
-                         'place_of_injury',
-                         'forearm_fx_loc',
-                         'forearm_fx_desc',
-                         'fasciotomy_loc'
-)
+                         'place_of_injury')
+
+# patient_period_list <- list('chapter_desc', 
+#                          'subchapter_desc')
 
 bar_func <- function(data, col){
 
@@ -105,7 +114,10 @@ bar_func <- function(data, col){
 
   graph_results <- data %>% 
     filter.(fltr_fasciotomy == T) %>% 
-    summarize.(total = n.(), by = c(!!col, fltr_fasciotomy)) %>% 
+    summarize.(total = n.(), by = c(!!col, peds_adult_flag)) %>% 
+    arrange.(-total) %>% 
+    slice.(1:10) %>% 
+    na.omit() %>% 
     ggplot(aes(x = reorder(!!col, total), y =total, label = total)) +
     geom_bar(position = "dodge", stat = "identity") + 
     geom_text(vjust = 0)+
@@ -115,18 +127,126 @@ bar_func <- function(data, col){
          y = "Count of Patients",
          x = NULL) +
     theme(axis.text.y=element_text(angle=0, hjust=1)) +
-    facet_wrap(~fltr_fasciotomy)
+    facet_wrap(~peds_adult_flag, scales = "free_x")
   
   return( graph_results)
 }
 
 
-map.(patient_col_list, ~ bar_func(patient_periods, .x))
-
+map.(patient_df_list, ~ bar_func(patient_df, .x))
+# map.(patient_period_list, ~ bar_func(fx_proc, .x))
 
 # data.table::fwrite(patient_periods, file = "patient_time_periods.csv")
+```
+
+
+```{r}
+
+patient_df_test <- patient_df %>% 
+  mutate.(injury_desc_lvl_0 = case.(injury_desc == 'Motor Vehicle Traffic Accidents', injury_desc, 
+                                    injury_desc == 'Accidental Falls', injury_desc, 
+                                    injury_desc == 'Other Accidents', injury_desc, 
+                                    injury_desc == 'Homicide and Injury Purposely Inflicted By Other Persons', injury_desc, 
+                                    injury_desc == 'Motor Vehicle Nontraffic Accidents', injury_desc, 
+                                    default = 'Other Injuries'   ))
+
+
+mvta_lvl_1 <- function(.col){
+    .col <- case.(stringr::str_detect(.col, "Driver of MV") == TRUE, 'Driver',
+                  stringr::str_detect(.col, "Motorcyclist") == TRUE, 'Motorcyclist',
+                  stringr::str_detect(.col, "Pedestrian") == TRUE, 'Pedestrian',
+                  stringr::str_detect(.col, "Passenger") == TRUE, 'Passenger',
+                  default = 'Other')
+    return(.col)
+}
+
+mvta_lvl_2 <- function(.col){
+  .col <- case.(stringr::str_detect(.col, "Loss Control") == TRUE, 'Loss Control-No Collision', 
+                stringr::str_detect(.col, "Highway Collision ") == TRUE, 'Highway Collision ',
+                stringr::str_detect(.col, "Collision w/ MV") == TRUE, 'Collision w/ MV',
+                stringr::str_detect(.col, "Collision w/ Pedestrian") == TRUE, 'Collision w/ Pedestrian',
+                default = 'Other')
+  return(.col)
+}
+
+otheracc_lvl_2<- function(.col){
+    .col <- case.(stringr::str_detect(.col, "Overexertion from sudden strenuous movement") == TRUE, 'Overexertion',
+                  stringr::str_detect(.col, "Cutting Object Accident") == TRUE, 'Cutting Object',
+                  stringr::str_detect(.col, "Machinery Accident") == TRUE, 'Machinery',
+                  stringr::str_detect(.col, "Struck") == TRUE, 'Struck Against',
+                  stringr::str_detect(.col, "Firearm") == TRUE, 'Firearm',
+                  stringr::str_detect(.col, "Between Objects") == TRUE, 'Caught Between Objects',
+                  default = 'Other')
+    return(.col)
+}
+
+
+## Accidential Falls
+
+
+accfall_lvl_2 <- function(.col){
+    .col <- case.(stringr::str_detect(.col, "Sports") == TRUE, 'Sports',
+                  stringr::str_detect(.col, "Stairs") == TRUE, 'Stairs or Steps',
+                  stringr::str_detect(.col, "Pedestrian") == TRUE, 'Pedestrian',
+                  stringr::str_detect(.col, "Passenger") == TRUE, 'Passenger',
+                  default = 'Other')
+    return(.col)
+}
+
+accfall_lvl_1 <- function(.data, .var){
+  
+  .var <- rlang::enquo(.var)
+
+  .data %>%
+    separate(., !!.var, c('top_level', 'location'), sep = ' - ') 
+  # %>%
+  #   case.(stringr::str_detect(top_level, c("Oth Multi-level Fall",
+  #                                     'Fall From or Out of Building/Other Structure',
+  #                                     'Ladders',
+  #                                     'Fall On or From Stairs/Steps')) == TRUE, 'Multi-Level Fall',
+  #         stringr::str_detect(top_level, c("Fall From Collision/Push/Shoving","Stairs")) == TRUE, 'Fall From Collision/Push/Shoving',
+  #         stringr::str_detect(top_level, "Same Level") == TRUE, 'Same Level Fall',
+  #         default = 'Other')
+
+}
+
+
+split_test <- function(.data, .var) {
+  .var <- rlang::enquo(.var)
+  
+  .data %>% 
+    separate.(., !!.var, sep = "-", into = c("col1", "col2")) %>% 
+    eval_tidy()
+  
+}
+
+
+
+patient_df_test %>%
+  filter.(injury_desc == 'Accidental Falls') %>%
+  # filter.(injury_desc == 'Other Accidents') %>%
+  # filter.(fltr_fasciotomy == T) %>%
+  filter.(peds_adult_flag == 'Peds') %>%
+  select.(cause_of_injury_e_code) %>% 
+  split_test(., cause_of_injury_e_code)
+
+  # select.(cause_of_injury_e_code, peds_adult_flag, fall_height, fltr_fasciotomy, injury_desc) %>% 
+  # filter.(injury_desc %in%  c('Motor Vehicle Traffic Accidents', 'Accidental Falls')) %>%  
+
+  # filter.(fall_height == 'Unknown') %>%
+  # separate.(., cause_of_injury_e_code, c('top_level', 'location'), sep = ' - ') 
+  accfall_lvl_1(., cause_of_injury_e_code)
+  mutate.(func_desc_1 = accfall_lvl_1( cause_of_injury_e_code),
+          # func_desc_2 = accfall_lvl_2(cause_of_injury_e_code),
+          ) %>% 
+  # separate.(cause_of_injury_e_code, c('top_level', 'location'), sep = ' - ') %>% 
+  count(  func_desc_1, fltr_fasciotomy,  top_level, location) %>%
+  select( func_desc_1, everything.()) %>% 
+  pivot_wider.(names_from = fltr_fasciotomy, values_from = n) %>% 
+  arrange(top_level) #-`TRUE`)
 
 ```
+
 
 
 # Forearm Surgeries that results in Fasciotomy
@@ -214,27 +334,90 @@ fx_proc %>%
 ```
 
 
+```{r}
+
+library(leaps)
+
+
+model_df <- fx_proc %>% 
+  mutate.(fltr_fasciotomy = as_factor(fltr_fasciotomy)) %>%
+  select.(-date, -time, -index, -code_desc, -code_cd, -id, -data_source, -chapter_desc, -fltr_procedure) %>% 
+  as_tibble() %>% 
+  na.omit() %>% 
+  head(2000)
+
+
+reg_1 <- regsubsets(fltr_fasciotomy ~ subchapter_desc * race * injury_desc,
+  data = model_df, nvmax = 4, really.big=T, method = "backward")
+
+summary(reg_1)
+
+
+```
+
+
+
 ## Woe Binning
 ```{r}
 
 
 library(woeBinning)
 
+
+
+
 df <- fx_proc %>% 
   drop_na.() %>% 
-  select(fltr_fasciotomy, subchapter_desc, injury_desc, code_desc) %>% 
+  select(fltr_fasciotomy, subchapter_desc, chapter_desc, injury_desc, code_desc, sex) %>% 
   mutate(subchapter_desc = as.factor(subchapter_desc), 
-         injury_desc = as.factor(injury_desc)) 
+         injury_desc = as.factor(injury_desc)) %>% 
+  group_by(fltr_fasciotomy, subchapter_desc, chapter_desc, injury_desc, code_desc, sex) %>% 
+  summarise(cnt = n())
+
+select_cols <- df %>% 
+  count(chapter_desc, subchapter_desc) %>% 
+  mutate(props = n/sum(n)) %>% arrange(props) %>%  
+  filter(n >1) %>% 
+  pull(chapter_desc)
+
+df <- df %>% filter(chapter_desc %in% select_cols)
+
+
+df %>% 
+  count(chapter_desc) %>% 
+  mutate(props = n/sum(n)) %>% arrange(props)
+
 
 binning <- woe.tree.binning(df, 
                  target.var = 'fltr_fasciotomy', 
-                 pred.var = 'subchapter_desc',  
-                 event.class='TRUE')
+                 pred.var = c( 'injury_desc', 'chapter_desc'),  
+                 event.class='FALSE')
+
+
+df %>% 
+  count(chapter_desc) %>% 
+  mutate(props = n/sum(n))
 
 
 woe.binning.plot(binning)
 tabulate.binning <- woe.binning.table(binning)
 tabulate.binning
+
+
+df_woe <- woe.binning.deploy(df, 
+                             binning, 
+                             add.woe.or.dum.var = 'woe')
+
+df_woe %>% 
+  count(subchapter_desc.binned, injury_desc.binned, fltr_fasciotomy) %>% 
+  mutate(props = n/sum(n)) %>% 
+  gt(rowname_col = 'subchapter_desc.binned', 
+      groupname_col = 'injury_desc.binned' )
+
+
+df_woe %>% 
+  count(fltr_fasciotomy) %>% 
+  mutate(props = n/sum(n))
 
 ```
 
