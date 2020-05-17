@@ -302,8 +302,9 @@ patient_df %>%
 ```{r proc}
 
 fx_list <- patient_periods %>% 
-  # filter.(fltr_procedure == T) %>% 
-  select.(id, fltr_fasciotomy, fltr_procedure, sex, race, age_in_yrs, injury_desc) %>% 
+  filter.(fltr_procedure == T, 
+          fltr_fasciotomy == T) %>% 
+  select.(id, fltr_fasciotomy, peds_adult_flag, fltr_procedure, sex, race, age_in_yrs, injury_desc) %>% 
   distinct.()
 
 fx_proc <- trans_full_df %>% 
@@ -327,7 +328,9 @@ fx_proc <- fx_proc %>%
 
 
 fx_proc %>% 
-  count(data_source) %>% 
+  select.(id, peds_adult_flag) %>% 
+  distinct.() %>% 
+  count(peds_adult_flag) %>% 
   mutate(props = n/sum(n))
 
 
@@ -517,94 +520,6 @@ rf_auc %>%
   geom_abline(lty = 3) + 
   coord_equal() + 
   scale_color_viridis_d(option = "plasma", end = .6)
-
-```
-
-
-
-```{r}
-
-#TODO 
-# 1. Only use patient data that has complete time and date for arrival, procedure, and fasciotomy
-# 2. Use that to determine the typical time in between - it might be necessary to use the hosptial ID 
-# 3. Use patients age, sex, and location
-# 4. Build this into the traumaR functionality
-
-create_patient_timeframe(patient_df)
-
-
-time_frame_results <- 
-patient_df %>% 
-  filter.(fltr_fasciotomy == T, 
-          fltr_procedure == T, 
-          # age_in_yrs <= 16
-  ) %>%
-  # mutate_across.(ends_with.("_tm"), ~ ifelse.(is.na(.x), "12:00", .x)) %>% 
-  mutate_across.(ends_with.("_tm"), as.ITime) %>% 
-  mutate_across.(ends_with.("_dt"), mdy) %>% 
-  # filter.(is.na(fasciotomy_tm)) %>%
-  select.(
-    id,
-    age_in_yrs,
-    arrival_dt,
-    arrival_tm,
-    forearm_fx_dt,
-    forearm_fx_tm,
-    fasciotomy_dt,
-    fasciotomy_tm,
-    discharge_dt,
-    discharge_tm
-  ) %>%
-  drop_na.() %>% 
-  mutate.(peds_adult = ifelse.(age_in_yrs <= 16, "Peds", "Adult"), 
-          arrival_dtime = ymd_hms(paste(arrival_dt, arrival_tm)), 
-          forearm_fx_dtime = ymd_hms(paste(forearm_fx_dt, forearm_fx_tm)), 
-          fasciotomy_dtime = ymd_hms(paste(fasciotomy_dt, fasciotomy_tm)), 
-          discharge_dtime = ymd_hms(paste(discharge_dt, discharge_tm)), 
-          total_stay_time = as.period(interval(arrival_dtime,  discharge_dtime)), 
-          arrival_to_forearm_time = as.period(interval(arrival_dtime, forearm_fx_dtime)), 
-          arrival_to_fasciotomy_time = as.period(interval(arrival_dtime, fasciotomy_dtime)), 
-          forearm_to_fasciotomy_time = as.period(interval(forearm_fx_dtime,  fasciotomy_dtime)), 
-          fasciotomy_to_discharge_time = as.period(interval(fasciotomy_dtime,  discharge_dtime))) 
-
-
-library(ggplot2)
-
-time_frame_results %>% 
-  ggplot(aes( x = period_to_seconds(total_stay_time), y = period_to_seconds(arrival_to_fasciotomy_time))) +
-    geom_point()
-
-time_frame_results %>% 
-  mutate.(total_stay_sec = period_to_seconds(total_stay_time), 
-          total_stay_sec = as.numeric(total_stay_sec)) %>%  
-  ggplot(aes())
-  hist(total_stay_sec, breaks=20)
-
-
-time_frame_results %>% 
-  mutate.(total_stay_sec = period_to_seconds(total_stay_time), 
-          total_stay_sec = as.numeric(total_stay_sec)) %>%  
-  ggplot(aes(x=total_stay_sec)) + 
-  geom_histogram(color="black", fill="white")
-
-
-
-time_frame_results %>% 
-  mutate.(total_stay_sec = period_to_seconds(total_stay_time), 
-          total_stay_min = total_stay_sec/60,
-          total_stay_hr= total_stay_min/60, 
-          total_stay_day = total_stay_hr/24)
-
-
-p <- seconds(x = 120)
-
-period_to_seconds(p)%/%60%/%60
-
-geom_bar(position="dodge", stat="identity")
-
-
-ggplot(data, aes(fill=condition, y=value, x=specie)) + 
-    geom_bar(position="dodge", stat="identity")
 
 ```
 
