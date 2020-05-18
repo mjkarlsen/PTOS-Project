@@ -18,7 +18,9 @@ pacman::p_load( traumaR,
                 tictoc, 
                 gt, 
                 vip,
+                DMwR,
                 rpart, 
+                themis,    #github version
                 rpart.plot,
                 ROSE,
                 yardstick)
@@ -56,16 +58,16 @@ CS typically develops after surgery or trauma, causing excessive fluid in the fa
 The primary data comes from the **Pennsylvania Trauma Outcome System** (PTOS), which contains results from 2010 - 2015. There are approximately 530k anonymized patient records and 1,400 columns of descriptive information regarding each procedure. The data requires a significant amount of manipulation to normalize and prepare it for analysis. Furthermore, I will separate the initial PTOS data into normalized data structures focused on demographics, prehospital, medical procedures, and outcomes.  The PTOS data uses medical coding to classify causes of injury, examination results, processes, and treatments. I will use the International Statistical Classification of Diseases and Related Health Problems (ICD) data to translate codes into descriptive terms accurately.
 
 ## Data Wrangling
-I created an R Package, [traumaR](https://github.com/mjkarlsen/traumaR), and hosted it in a GitHub repo. This allows for repeatable analysis and creates safeguards from any potential mishaps with coding failures. This package stores all of the data wrangling procedures and over **50** custom functions designed to translate the medical codes into human friendly descriptions. 
+I created an R Package, [traumaR](https://github.com/mjkarlsen/traumaR), and hosted it in a GitHub repo. This allows for repeatable analysis and creates safeguards from any potential mishaps with coding failures. This package stores all of the data wrangling procedures and over **50** custom functions designed to translate the medical codes into human-friendly descriptions. 
 
 ### Raw Data Structure
-The PTOS raw data is structured so that each patients information is found on the same row. For example, if a patient has five surgical procedures those results would be shown across 5 different columns. This data structure introduced many challenges for identifying patterns in surgical sequencing. Here is a sample of the raw data. 
+The PTOS raw data is structured so that each patient's information is found on the same row. For example, if a patient has five surgical procedures, those results would be shown across five different columns. This data structure introduced many challenges for identifying patterns in surgical sequencing. Here is a sample of the raw data.
 
 ```{r ptos_example, paged.print=FALSE}
 ptos_df %>% as.tibble() %>% head(10) 
 ```
 
-It was necessary to transpose this information using [tidytable](https://github.com/markfairbanks/tidytable) which handles large data sets. I decided to transpose After identifying which columns had relevant, I transposed the surgical events listed below using their patient id, date, time, location, surgical code, surgical code description.
+It was necessary to transpose this information using [tidytable](https://github.com/markfairbanks/tidytable) which handles large data sets. I decided to transpose after identifying which columns had the most relevance.  I transposed the surgical events listed below using their patient id, date, time, location, surgical code, surgical code description.
 
 * Arrival to hospital
 * Medical Diagnosis
@@ -80,10 +82,10 @@ trans_full_df %>% as_tibble() %>% head()
 ```
 
 ## PTOS Exploratory Data Analysis
-I decided to filter for patients that had a forearm fracture which led to compartment syndrome complications which required a fasciotomy. The primarly objective of this analysis is to understand these complications in pediatric patients (less than 17 years of age) however, it is beneficial to compare the count of patients against the adult population. 
+I decided to filter for patients that had a forearm fracture which led to compartment syndrome complications, which required a fasciotomy. The primary objective of this analysis is to understand these complications in pediatric patients (less than 17 years of age); however, it is beneficial to compare the count of patients against the adult population.  
 
 ### Summary of Patient Results
-The PTOS data contains over 21K patients ranging from all different types of patient demographics, and medical procedures. This data contains over 630 patients that have both forearm surgery and fasciotomy. Initial observations show a slightly higher likelihood of **Op red-int fix rad/ulna** procedures resulting in comparement syndrome complications. 
+The PTOS data contains over 21K patients ranging from all different types of patient demographics and medical procedures. This data includes over 630 patients that have both forearm surgery and fasciotomy. Initial observations show a slightly higher likelihood of **Op red-int fix rad/ulna** procedures resulting in compartment syndrome complications.
 
 ```{r patient_fx_cnt_gt}
 patient_df %>% 
@@ -257,48 +259,101 @@ map.(patient_df_list, ~ bar_func(patient_df, .x))
 # Predicting Compartment Syndrome Complications
 
 ## Class Imbalance
+There is a significant class imbalance for pediatric patients that had both forearm surgeries and a fasciotomy. Out of 2,741 patients, only 68 had a fasciotomy resulting in less than 3%. The initial models were memorizing the results and predicting that no patient would have a fasciotomy resulting in a model with a 3% error. From a glance, it appears to be a decent model, but it will not generalize well or help identify patients at high risk for compartment syndrome. 
 
 ```{r class_imbalance}
-
+patient_df %>% 
+  filter.(fltr_procedure == T,
+          peds_adult_flag == 'Peds') %>% 
+  select.(fltr_fasciotomy) %>% 
+  ggplot(aes(x = fltr_fasciotomy, group = fltr_fasciotomy, label = ..count..)) +
+  geom_bar(aes(y = ..count.., fill = factor(..x..)), stat = "count") +
+  geom_text( stat= "count", vjust = -.5) +
+  ggthemes::theme_few() +
+  labs(title = "Class Imbalance for Fasciotomy",
+         y = "Count of Patients",
+         x = 'Patient Had Fasciotomy') +
+    theme(axis.text.y=element_text(angle=0, hjust=1), legend.position = "none") +
+    scale_x_discrete(labels = function(x) str_wrap(x, width = 30))
 
 ```
 
+## Balancing the Classes
+Using resampling techniques, I decided to create a model with an upsample for a 50/50 split on the data. The results were far more interesting and insightful than the previous model that only memorized that 97% of patients will not have compartment syndrome complications. 
 
-
-```{r}
-patient_list <- patient_periods %>% 
-  filter.(fltr_procedure == T, 
-          peds_adult_flag == 'Peds') %>% 
-  select.(id, fltr_fasciotomy, peds_adult_flag, fltr_procedure, sex, race, age_in_yrs, injury_desc) %>% 
+```{r creating_upsample_model}
+patient_list <- patient_periods %>%
+  filter.(fltr_procedure == T,
+          peds_adult_flag == 'Peds') %>%
+  select.(
+    id,
+    fltr_fasciotomy,
+    peds_adult_flag,
+    fltr_procedure,
+    sex,
+    race,
+    age_in_yrs,
+    injury_desc,
+    patient_county,
+    cause_of_injury_e_code
+  ) %>%
   distinct.()
 
-fx_proc_df <- trans_full_df %>% 
-  filter.(data_source %in% c('diagnosis', 
-                             'procedure', 
-                             'complication' )) %>% 
-  mutate.(data_source = fct_relevel(data_source, c('diagnosis', 
-                                                   'procedure', 
-                                                   'complication' ))) %>% 
-  inner_join.(patient_list, by = 'id') %>% 
-  arrange.(id, date, data_source, time ) %>% 
-  mutate.(index = seq_len(.N), by = id ) %>%
+
+fx_proc_df <- trans_full_df %>%
+  filter.(data_source %in% c('diagnosis',
+                             'procedure',
+                             'complication')) %>%
+  mutate.(data_source = fct_relevel(data_source, c('diagnosis',
+                                                   'procedure',
+                                                   'complication'))) %>%
+  inner_join.(patient_list, by = 'id') %>%
+  arrange.(id, date, data_source, time) %>%
+  mutate.(index = seq_len(.N), by = id) %>%
   mutate.(fltr_fasciotomy = as_factor(fltr_fasciotomy)) %>% 
-  select.(index, id, everything.()) %>% 
-  filter.(chapter_desc != 'Extremity Compartment Syndrome (not present on admission)', 
-          code_cd != '83.14') %>% 
-  select.(-date,  -time, -code_cd, -loc_desc, -chapter_desc, -index, -data_source, -fltr_procedure, -peds_adult_flag) %>% 
-  as_tibble() %>% 
+  select.(index, id, everything.()) %>%
+  filter.(
+    chapter_desc != 'Extremity Compartment Syndrome (not present on admission)',
+    code_cd != '83.14'
+  ) %>%
+  select.(
+    id,
+    fltr_fasciotomy,
+    code_desc,
+    subchapter_desc,
+    sex,
+    race,
+    injury_desc,
+    age_in_yrs,
+    cause_of_injury_e_code
+  ) %>%
+  as_tibble() %>%
   na.omit() 
 
-data_balanced_over <- ovun.sample(fltr_fasciotomy ~ . -id, 
-                                  data = fx_proc_df, 
-                                  method = "both", 
-                                  # p = 0.5,
-                                  N = 100000, 
+```
+
+## Random Forest with Upsample Data
+
+```{r randomforest_model}
+
+set.seed(123)
+train_test_split <- rsample::initial_split(data = fx_proc_df, 
+                                           strata = fltr_fasciotomy)
+
+
+train_df <- train_test_split %>% training() 
+test_df  <- train_test_split %>% testing()
+
+
+
+data_balanced_over <- ovun.sample(fltr_fasciotomy ~ . -id,
+                                  data = train_df,
+                                  method = "both",
+                                  p = 0.5,
+                                  N = 10000,
                                   seed = 123)$data
 
-table(data_balanced_over$fltr_fasciotomy)
-
+# table(data_balanced_over$fltr_fasciotomy)
 
 rf_recipe <- 
   recipe(fltr_fasciotomy ~ ., data = data_balanced_over) %>%
@@ -308,123 +363,123 @@ rf_recipe <-
   step_unknown(all_nominal()) %>% 
   step_dummy(all_nominal(), -all_outcomes(), -id) %>% 
   step_zv(all_nominal()) %>% 
-  step_naomit(all_predictors())
+  step_naomit(all_predictors()) 
 
 
 train_data <- prep(rf_recipe) %>% juice()
-
-```
-
-```{r}
-
+test_data <- prep(rf_recipe) %>% bake(test_df)
 
 fit <- rpart(fltr_fasciotomy ~ . -id,
    method="class", 
    data=train_data)
 
 rpart.plot(fit, 
-           type = 3,
+           type = 2,
+           clip.right.labs = FALSE, 
+           # branch = .4,
+           box.palette = "GnBu", 
+           compress = F, 
+           # extra = 104,
+           cex = .55)
+
+printcp(fit) # display the results
+plotcp(fit) # visualize cross-validation results
+# summary(fit) # detailed summary of splits
+```
+
+This random forest model has many splits and it is overly complex. I will use a pruning feature and reduce the amount of branches created by using the complexity parameter. The new model below shows a cleaner model with less complexity. Male/Female Split - the initial split between male and female suggests that males are more prone to this complication. It might be necessary to upsample between the male and female since males make up 90% of population. 
+
+```{r pruned_rf }
+pfit<- prune(fit, cp=0.014)
+
+
+rpart.plot(pfit, 
+           type = 2,
            clip.right.labs = FALSE, 
            # branch = .4,
            box.palette = "GnBu", 
            shadow.col = "gray",
-           compress = F,
-           extra = 104,
+           compress = F, 
+           # extra = 104,
            cex = .6)
 
-# printcp(fit) # display the results
-# plotcp(fit) # visualize cross-validation results
-# summary(fit) # detailed summary of splits
+vip(pfit)
+
+```
+
+```{r eval=FALSE, include=FALSE}
+
+rpart.rules(fit, style = "tallw")
+
+rpart.predict(fit, newdata=test_data, rules=TRUE)
 
 
 ```
 
 
-```{r}
 
-set.seed(123)
-train_test_split <- rsample::initial_split(data = fx_proc_df, 
-                                           strata = chapter_desc)
+```{r eval=FALSE, include=FALSE}
 
-train_df <- train_test_split %>% training() 
-test_df  <- train_test_split %>% testing()
 
-train_df %>% 
-  count(fltr_fasciotomy) %>% 
-  mutate(props = n/sum(n))
+classTree <- SMOTE(fltr_fasciotomy ~ sex +  race, train_df)
+## check the resulting classification tree
+classTree
+## The tree with the unbalanced data set would be
+rpartXse(Species ~ .,data,se=0.5)
 
-test_df %>% 
-  count(fltr_fasciotomy) %>% 
-  mutate(props = n/sum(n))
 
-# set.seed(234)
-# val_set <- validation_split(train_df, 
-#                             strata = chapter_desc,
-#                             prop = 0.80)
-# val_set
-# 
-# cores <- parallel::detectCores()-1
 
-# rf_mod <- 
-#   rand_forest(mtry = tune(), min_n = tune(), trees = 1000) %>% 
-#   set_engine("ranger", num.threads = cores) %>% 
-#   set_mode("classification")
 
 rf_recipe <- 
   recipe(fltr_fasciotomy ~ ., data = train_df) %>%
   update_role(fltr_fasciotomy, new_role = "outcome") %>% 
-  step_other(all_nominal(), threshold = 0.01) %>%
+  update_role(id, new_role = "ID COL") %>%
+  step_other(all_nominal(), -id, threshold = 0.001) %>%
   step_unknown(all_nominal()) %>% 
-  step_dummy(all_nominal(), -all_outcomes()) %>% 
+  step_dummy(all_nominal(), -all_outcomes(), -id) %>% 
   step_zv(all_nominal()) %>% 
-  step_naomit(all_predictors())
-
+  step_naomit(all_predictors()) 
 
 train_data <- prep(rf_recipe) %>% juice()
+test_data <- prep(rf_recipe) %>% bake(test_df)
 
-train_data %>%colnames()
-  
-# %>% 
-#   step_naomit(all_nominal()) %>% 
-#   step_novel(all_nominal()) %>% 
-#   step_modeimpute(all_nominal()) %>% 
-#   
+fit <- rpart(fltr_fasciotomy ~ . -id,
+   method="class", 
+   data=train_data)
 
-# rf_workflow <- 
-#   workflow() %>% 
-#   add_model(rf_mod) %>% 
-#   add_recipe(rf_recipe)
-# 
-# 
-# rf_mod %>%    
-#   parameters()
-# 
-# set.seed(345)
-# rf_res <- 
-#   rf_workflow %>% 
-#   tune_grid(val_set,
-#             grid = 10,
-#             control = control_grid(save_pred = TRUE),
-#             metrics = metric_set(roc_auc))
-# 
-# rf_res %>% 
-#   show_best(metric = "roc_auc")
+rpart.plot(fit, 
+           type = 2,
+           clip.right.labs = FALSE, 
+           # branch = .4,
+           box.palette = "GnBu", 
+           shadow.col = "gray",
+           compress = F, 
+           # extra = 104,
+           cex = .6)
+
+printcp(fit) # display the results
+plotcp(fit) # visualize cross-validation results
+# summary(fit) # detailed summary of splits
+
+vip(fit)
+
+pfit<- prune(fit, cp=0.011205)
 
 
+rpart.plot(pfit, 
+           type = 2,
+           clip.right.labs = FALSE, 
+           # branch = .4,
+           box.palette = "GnBu", 
+           shadow.col = "gray",
+           compress = F, 
+           # extra = 104,
+           cex = .6)
 
-
-
+vip(pfit)
 ```
 
-```{r}
-
-
-
-
-```
-
-
-
-
-
-## Variable Importance
+# Over the next 3 Weeks
+* Random Forest and XGBoost using SMOTE data
+* Association Analysis for series of procedures to understand if there is a sequence of medical events which leads to an increased probability of a patient having complications from compartment syndrome. 
+* Shiny Interactive Dashboard
