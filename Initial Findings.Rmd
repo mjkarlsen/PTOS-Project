@@ -1,8 +1,8 @@
 ---
 title: "Initial Findings"
-subtitle: 'Compartment Syndrome in Pediatric Patients'
 author: "Matt Carlson"
 date: "5/17/2020"
+subtitle: Compartment Syndrome in Pediatric Patients
 ---
 
 
@@ -30,7 +30,7 @@ knitr::opts_chunk$set(echo = FALSE, warning = FALSE)
 ```
 
 
-```{r load_data, eval=FALSE, include=FALSE}
+```{r load_data, include=FALSE}
 
 knitr::knit_global()
 
@@ -39,7 +39,7 @@ file_path <- 'E:/Northwestern/12 - Capstone/PTOS_Data/'
 
 
 for(d in dfs) {
-  if (exists(d) && is.data.frame(get(d))) next(d)
+  if (exists(d) && is.data.frame(get(d))) next(d) 
   else load(file = paste0(file_path,d, ".RData"))
 }
 
