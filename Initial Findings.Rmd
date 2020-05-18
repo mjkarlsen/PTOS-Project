@@ -22,6 +22,8 @@ pacman::p_load( traumaR,
                 rpart, 
                 themis,    #github version
                 rpart.plot,
+                arules, 
+                arulesViz,
                 ROSE,
                 yardstick)
 
@@ -311,15 +313,22 @@ fx_proc_df <- trans_full_df %>%
   arrange.(id, date, data_source, time) %>%
   mutate.(index = seq_len(.N), by = id) %>%
   mutate.(fltr_fasciotomy = as_factor(fltr_fasciotomy)) %>% 
-  select.(index, id, everything.()) %>%
+  select.(index, id, everything.())
+
+# Making new data set for association analysis
+fx_association_df <- fx_proc_df
+
+fx_proc_df <- fx_proc_df %>%
   filter.(
     chapter_desc != 'Extremity Compartment Syndrome (not present on admission)',
     code_cd != '83.14'
   ) %>%
   select.(
     id,
+    index,
     fltr_fasciotomy,
     code_desc,
+    code_cd,
     subchapter_desc,
     sex,
     race,
@@ -346,7 +355,7 @@ test_df  <- train_test_split %>% testing()
 
 
 
-data_balanced_over <- ovun.sample(fltr_fasciotomy ~ . -id,
+data_balanced_over <- ovun.sample(fltr_fasciotomy ~ . -id -index,
                                   data = train_df,
                                   method = "both",
                                   p = 0.5,
@@ -358,7 +367,7 @@ data_balanced_over <- ovun.sample(fltr_fasciotomy ~ . -id,
 rf_recipe <- 
   recipe(fltr_fasciotomy ~ ., data = data_balanced_over) %>%
   update_role(fltr_fasciotomy, new_role = "outcome") %>% 
-  update_role(id, new_role = "ID COL") %>% 
+  update_role(id, code_cd, index, new_role = "ID COL") %>% 
   step_other(all_nominal(), -id, threshold = 0.001) %>%
   step_unknown(all_nominal()) %>% 
   step_dummy(all_nominal(), -all_outcomes(), -id) %>% 
@@ -369,7 +378,7 @@ rf_recipe <-
 train_data <- prep(rf_recipe) %>% juice()
 test_data <- prep(rf_recipe) %>% bake(test_df)
 
-fit <- rpart(fltr_fasciotomy ~ . -id,
+fit <- rpart(fltr_fasciotomy ~ . -id -index -code_cd,
    method="class", 
    data=train_data)
 
@@ -478,6 +487,156 @@ rpart.plot(pfit,
 
 vip(pfit)
 ```
+
+
+## Association Analysis
+
+
+```{r new_association}
+
+surgery_list <- fx_association_df %>% 
+  arrange.(id, index) %>% 
+  summarize.(items = paste(code_desc, collapse = ","),
+              by = id) %>% 
+  select.(items) 
+
+write.csv(surgery_list, "surgery_basket.csv", sep = ",", quote = FALSE, row.names = TRUE)
+
+surgery_basket <- read.transactions(
+        file = "surgery_basket.csv",
+        format = "basket",
+        header = TRUE,
+        sep = ",",
+        # cols=c(1,2),
+        rm.duplicates = T)
+summary(surgery_basket)
+
+
+itemFrequencyPlot(surgery_basket, topN=10, type='absolute')
+
+rules <- apriori(surgery_basket, 
+                 parameter = list(supp=0.001, conf=0.8),
+                 appearance = list(rhs="Fasciotomy"))
+
+rules <- sort(rules, by='confidence', decreasing = TRUE)
+summary(rules)
+
+inspect(rules[1:10])
+
+topRules <- rules[1:30]
+plot(topRules)
+
+plot(topRules, method="graph")
+plot(topRules, method="paracoord")
+plot(topRules, method="two-key plot")
+
+```
+
+
+
+
+```{r association_analysis}
+
+fx_association_df <- fx_association_df %>% 
+  select.(id, code_desc) %>% 
+  mutate_across.(id, as.integer)
+
+
+# Write our data.frame to a csv
+write.csv(fx_association_df, "tall_transactions",  sep = "|")
+
+order_trans <- read.transactions(
+        file = "tall_transactions",
+        format = "basket",
+        header = TRUE,
+        sep = "|",
+        # cols=c(1,2),
+        rm.duplicates = T)
+
+inspect(order_trans[1:5])
+
+# 
+# 
+# summary(order_trans)
+# 
+# 
+# association_df <- fx_association_df %>%
+#   # filter.(code_cd == '83.14')
+#   arrange.(id, index) %>% 
+#   select(id, code_desc, index) %>% 
+#   mutate_across.(everything.(), as.factor)
+# 
+# # basket <- as(association_df, "transactions")
+# 
+# ######################################################
+# ######################################################
+# 
+# orders_mat_prep <- reshape(data = association_df,
+#                              idvar = "id",
+#                              timevar = "index",
+#                              direction = "wide")
+# 
+# order_matrix <- as.matrix(orders_mat_prep[,-1])
+# 
+# # Clean up the missing values to be FALSE
+# order_matrix[is.na(order_matrix)] <- FALSE
+# 
+# # Clean up names
+# colnames(order_matrix) <- gsub(x=colnames(order_matrix),
+#                                pattern="code_desc.1=\\.", replacement="")
+# 
+# 
+# order_df <- as.data.frame(order_matrix)
+# 
+# order_trans <- as(order_df,"transactions")
+
+
+######################################################
+######################################################
+
+itemFrequency(order_trans[, 1:10])
+
+itemFrequencyPlot(order_trans,
+                  type="relative",
+                  topN=10, # can be changed to the number of interest
+                  horiz=TRUE,
+                  col='steelblue3',
+                  xlab='',
+                  main='Item frequency, relative')
+
+itemFrequencyPlot(basket,
+                  type="absolute",
+                  topN=10,
+                  horiz=TRUE,
+                  col='steelblue3',
+                  xlab='',
+                  main='Item frequency, absolute')
+
+
+rules <- apriori(basket,
+                 parameter = list(support=.001,
+                                  confidence=.05,
+                                  minlen=2,
+                                  target='rules' # to mine for rules
+                                  ), 
+                 appearance = list (rhs="Fasciotomy"))
+
+summary(rules)
+
+inspect(sort(rules, by='lift', decreasing = T)[1:25])
+
+quality(rules)$chi <- interestMeasure(rules, measure='chi', significance=T, basket)
+inspect(sort(rules, by='lift', decreasing = T)[1:5])
+
+
+top.rules <- head(sort(rules, decreasing = TRUE, by = "lift"), 20)
+
+plot(top.rules, method = "graph", 
+     control = list(type = "items"),
+     shading = "lift")
+
+```
+
 
 # Over the next 3 Weeks
 * Random Forest and XGBoost using SMOTE data
