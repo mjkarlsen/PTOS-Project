@@ -81,64 +81,6 @@ for(d in dfs) {
 
 ```
 
-# Exploratory Data Analysis
-
-## What are the patient demographics that had forearm surgery and fasciotomy? 
-
-```{r eda_1, fig.height=6, fig.width=8}
-
-
-# fx_list <- patient_periods %>% 
-#   filter.(fltr_fasciotomy == T) %>% 
-#   select.(id, fltr_fasciotomy, sex, race, age_in_yrs, injury_desc, peds_adult_flag) %>% 
-#   distinct.()
-# 
-# fx_proc <- trans_full_df %>% 
-#   mutate.(data_source = as_factor(data_source), 
-#           data_source = fct_relevel(data_source, c('arrival/discharge', 'diagnosis', 'procedure', 'complications' ))) %>% 
-#   inner_join.(fx_list, by = 'id')
-
-patient_df_list <- list('sex',   
-                         'race',
-                         'fall_height',
-                         'primary_injury_type',
-                         'injury_desc', 
-                         'place_of_injury')
-
-# patient_period_list <- list('chapter_desc', 
-#                          'subchapter_desc')
-
-bar_func <- function(data, col){
-
-  col <- rlang::sym(col)
-
-  graph_results <- data %>% 
-    filter.(fltr_fasciotomy == T) %>% 
-    summarize.(total = n.(), by = c(!!col, peds_adult_flag)) %>% 
-    arrange.(-total) %>% 
-    slice.(1:10) %>% 
-    na.omit() %>% 
-    ggplot(aes(x = reorder(!!col, total), y =total, label = total)) +
-    geom_bar(position = "dodge", stat = "identity") + 
-    geom_text(vjust = 0)+
-    ggthemes::theme_stata() +
-    coord_flip() +
-    labs(title = toupper(expr_text(col)),
-         y = "Count of Patients",
-         x = NULL) +
-    theme(axis.text.y=element_text(angle=0, hjust=1)) +
-    facet_wrap(~peds_adult_flag, scales = "free_x")
-  
-  return( graph_results)
-}
-
-
-map.(patient_df_list, ~ bar_func(patient_df, .x))
-# map.(patient_period_list, ~ bar_func(fx_proc, .x))
-
-# data.table::fwrite(patient_periods, file = "patient_time_periods.csv")
-```
-
 
 ```{r}
 

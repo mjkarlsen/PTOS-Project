@@ -492,7 +492,50 @@ vip(pfit)
 ## Association Analysis
 
 
+
+
+```{r}
+trans_full_df %>%
+  filter.(data_source %in% c('diagnosis',
+                             'procedure',
+                             'complication')) %>% head()
+```
+
+
+
 ```{r new_association}
+
+
+fasc_list <- patient_periods %>%
+  filter.(fltr_procedure == T) %>%
+  select.(
+    id,
+    fltr_fasciotomy,
+    peds_adult_flag,
+    fltr_procedure,
+    sex,
+    race,
+    age_in_yrs,
+    injury_desc,
+    patient_county,
+    cause_of_injury_e_code
+  ) %>%
+  distinct.()
+
+fx_association_df <- trans_full_df %>%
+  filter.(data_source %in% c('diagnosis',
+                             'procedure',
+                             'complication')) %>%
+  mutate.(data_source = fct_relevel(data_source, c('diagnosis',
+                                                   'procedure',
+                                                   'complication'))) %>%
+  inner_join.(fasc_list, by = 'id') %>%
+  arrange.(id, date, data_source, time) %>%
+  mutate.(index = seq_len(.N), by = id) %>%
+  mutate.(fltr_fasciotomy = as_factor(fltr_fasciotomy)) %>% 
+  select.(index, id, everything.())
+
+
 
 surgery_list <- fx_association_df %>% 
   arrange.(id, index) %>% 
@@ -515,7 +558,7 @@ summary(surgery_basket)
 itemFrequencyPlot(surgery_basket, topN=10, type='absolute')
 
 rules <- apriori(surgery_basket, 
-                 parameter = list(supp=0.001, conf=0.8),
+                 parameter = list(supp=0.001, conf=0.9),
                  appearance = list(rhs="Fasciotomy"))
 
 rules <- sort(rules, by='confidence', decreasing = TRUE)
@@ -524,10 +567,10 @@ summary(rules)
 inspect(rules[1:10])
 
 topRules <- rules[1:30]
-plot(topRules)
+plot(topRules, measure = c("support", "lift"), shading = "confidence")
 
 plot(topRules, method="graph")
-plot(topRules, method="paracoord")
+plot(topRules, method="paracoord", control = list(reorder = TRUE))
 plot(topRules, method="two-key plot")
 
 ```
