@@ -1,5 +1,5 @@
 ---
-title: "MSDS Capstone Project"
+title: "PTOS Data Prep"
 author: "Matt Carlson"
 date: "5/11/2020"
 ---
@@ -25,12 +25,8 @@ pacman::p_load( traumaR,
 options(scipen=999)  #remove scientific notation
 knitr::opts_chunk$set(warning = FALSE, 
                       echo = FALSE)
-# knitr::opts_chunk$set(message = FALSE)
-# knitr::opts_chunk$set(fig.width = 12)
-# knitr::opts_chunk$set(fig.height = 10)
 
 ```
-
 
 ## Load Multiple Data Sources
 ```{r load_data}
@@ -42,10 +38,6 @@ tic()
 
 raw_data <- fread("E:/Northwestern/12 - Capstone/PTOS_Data.csv", na.strings = c("<unk>", "", "<n/a>")) %>%
   as.data.table() #%>%   clean_names()
-
-# 
-# raw_data <- fread("E:/Northwestern/12 - Capstone/PTOS_Toy.csv", na.strings = c("<unk>", "", "<n/a>")) %>%  
-#   as.data.table() #%>%   clean_names()
 
 traumaR::run_full_show(raw_data)
 
@@ -80,6 +72,7 @@ for(d in dfs) {
 
 
 ```
+
 
 
 ```{r}

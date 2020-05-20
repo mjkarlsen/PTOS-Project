@@ -265,18 +265,18 @@ There is a significant class imbalance for pediatric patients that had both fore
 
 ```{r class_imbalance}
 patient_df %>% 
-  filter.(fltr_procedure == T,
-          peds_adult_flag == 'Peds') %>% 
-  select.(fltr_fasciotomy) %>% 
+  filter.(fltr_procedure == T) %>% 
+  select.(fltr_fasciotomy, peds_adult_flag) %>% 
   ggplot(aes(x = fltr_fasciotomy, group = fltr_fasciotomy, label = ..count..)) +
   geom_bar(aes(y = ..count.., fill = factor(..x..)), stat = "count") +
   geom_text( stat= "count", vjust = -.5) +
   ggthemes::theme_few() +
   labs(title = "Class Imbalance for Fasciotomy",
          y = "Count of Patients",
-         x = 'Patient Had Fasciotomy') +
-    theme(axis.text.y=element_text(angle=0, hjust=1), legend.position = "none") +
-    scale_x_discrete(labels = function(x) str_wrap(x, width = 30))
+         x = 'Patients That Had Fasciotomy') +
+  theme(axis.text.y=element_text(angle=0, hjust=1), legend.position = "none") +
+  scale_x_discrete(labels = function(x) str_wrap(x, width = 30)) +
+  facet_wrap(~peds_adult_flag)
 
 ```
 
@@ -425,8 +425,6 @@ rpart.predict(fit, newdata=test_data, rules=TRUE)
 
 ```
 
-
-
 ```{r eval=FALSE, include=FALSE}
 
 
@@ -496,9 +494,12 @@ vip(pfit)
 
 ```{r}
 trans_full_df %>%
-  filter.(data_source %in% c('diagnosis',
-                             'procedure',
-                             'complication')) %>% head()
+  filter.(code_desc %like% "Carpal tunnel") %>%
+  # filter.(data_source == 'injury') %>% 
+  select(code_cd, code_desc, chapter_desc, subchapter_desc, data_source) %>% 
+  distinct() %>% 
+  head(20) %>% 
+  arrange.(code_cd)
 ```
 
 
@@ -507,7 +508,9 @@ trans_full_df %>%
 
 
 fasc_list <- patient_periods %>%
-  filter.(fltr_procedure == T) %>%
+  # filter.(fltr_fasciotomy == T) %>% 
+  # filter.(fltr_procedure == T) %>%
+  filter.(peds_adult_flag == "Adult") %>%
   select.(
     id,
     fltr_fasciotomy,
@@ -525,17 +528,31 @@ fasc_list <- patient_periods %>%
 fx_association_df <- trans_full_df %>%
   filter.(data_source %in% c('diagnosis',
                              'procedure',
-                             'complication')) %>%
-  mutate.(data_source = fct_relevel(data_source, c('diagnosis',
+                             'complication', 
+                             'injury')) %>%
+  filter.(code_cd != '32') %>% #Removed Extremity Compartment Syndrome Complication
+  filter.(code_cd != '83.65')  %>%  #Remove suture code
+  filter.(code_cd %notin% c('87.03', '87.41', '87.71', '88.01', '88.38'))  %>%  #Removal of CAT Scans
+  mutate.(data_source = fct_relevel(data_source, c('injury', 
+                                                   'diagnosis',
                                                    'procedure',
                                                    'complication'))) %>%
+  mutate.(code_desc = case.(data_source == 'injury', chapter_desc, 
+                            default = code_desc)) %>% 
   inner_join.(fasc_list, by = 'id') %>%
   arrange.(id, date, data_source, time) %>%
   mutate.(index = seq_len(.N), by = id) %>%
   mutate.(fltr_fasciotomy = as_factor(fltr_fasciotomy)) %>% 
   select.(index, id, everything.())
 
-
+fx_association_df %>% 
+  filter.(code_desc %like% 'Carpal tunnel release') %>% 
+  filter.( #data_source == 'procedure', 
+          # chapter_desc == 'OPERATIONS ON THE MUSCULOSKELETAL SYSTEM (76-84)',
+          # subchapter_desc == 'Reduction of fracture and dislocation'
+          ) %>% 
+  count(code_desc) %>% 
+  arrange.(-n)
 
 surgery_list <- fx_association_df %>% 
   arrange.(id, index) %>% 
@@ -550,133 +567,60 @@ surgery_basket <- read.transactions(
         format = "basket",
         header = TRUE,
         sep = ",",
-        # cols=c(1,2),
         rm.duplicates = T)
 summary(surgery_basket)
 
 
-itemFrequencyPlot(surgery_basket, topN=10, type='absolute')
 
-rules <- apriori(surgery_basket, 
-                 parameter = list(supp=0.001, conf=0.9),
+# # Build Rules for All Medical Outcomes that lead to Extremity Compartment Syndrome (not present on admission)
+# ecs_rules <- apriori(surgery_basket, 
+#                  parameter = list(supp=0.001, conf=0.01),
+#                  appearance = list(rhs="Extremity Compartment Syndrome (not present on admission)"))
+# 
+# ecs_rules <- sort(ecs_rules, by='confidence', decreasing = TRUE)
+# # inspect(rules)
+# ecs_toprules <- ecs_rules[1:20]
+# 
+# plot(ecs_toprules, method="paracoord", alpha = 0.7, control = list(reorder = TRUE))
+
+#Final Plots
+# Build Rules for All Medical Outcomes that lead to Fasciotomy
+fasc_rules <- apriori(surgery_basket, 
+                 parameter = list(supp=0.001, conf=0.5),
                  appearance = list(rhs="Fasciotomy"))
 
-rules <- sort(rules, by='confidence', decreasing = TRUE)
-summary(rules)
+fasc_rules <- sort(fasc_rules, by='confidence', decreasing = TRUE)
+# inspect(rules)
+fasc_toprules <- fasc_rules[1:20]
 
-inspect(rules[1:10])
+plot(fasc_toprules, method="paracoord", control = list(reorder = TRUE))
 
-topRules <- rules[1:30]
-plot(topRules, measure = c("support", "lift"), shading = "confidence")
-
-plot(topRules, method="graph")
-plot(topRules, method="paracoord", control = list(reorder = TRUE))
-plot(topRules, method="two-key plot")
 
 ```
 
+```{r}
+plot(topRules, method="graph", engine="htmlwidget", igraphLayout = "layout_in_circle")
+plot(topRules, method="graph", engine="htmlwidget", igraphLayout = "layout_on_grid")
+plot(topRules, method="graph", engine="htmlwidget", igraphLayout = "layout_as_star")
+plot(topRules, method="graph", engine="htmlwidget", layout=igraph::with_graphopt(spring.const=5, mass=50))
+# plot(topRules, method="graph", engine="graphviz")
 
 
-
-```{r association_analysis}
-
-fx_association_df <- fx_association_df %>% 
-  select.(id, code_desc) %>% 
-  mutate_across.(id, as.integer)
+# plot(topRules, measure = c("support", "lift"), shading = "confidence")
+# plot(topRules, method="graph")
+# plot(topRules, method="two-key plot")
 
 
-# Write our data.frame to a csv
-write.csv(fx_association_df, "tall_transactions",  sep = "|")
+itemsets <- eclat(surgery_basket, parameter = list(support = 0.02, minlen=2))
+plot(itemsets)
+plot(itemsets, method="graph")
+plot(itemsets, method="paracoord", alpha=.5, reorder=TRUE)
 
-order_trans <- read.transactions(
-        file = "tall_transactions",
-        format = "basket",
-        header = TRUE,
-        sep = "|",
-        # cols=c(1,2),
-        rm.duplicates = T)
-
-inspect(order_trans[1:5])
-
-# 
-# 
-# summary(order_trans)
-# 
-# 
-# association_df <- fx_association_df %>%
-#   # filter.(code_cd == '83.14')
-#   arrange.(id, index) %>% 
-#   select(id, code_desc, index) %>% 
-#   mutate_across.(everything.(), as.factor)
-# 
-# # basket <- as(association_df, "transactions")
-# 
-# ######################################################
-# ######################################################
-# 
-# orders_mat_prep <- reshape(data = association_df,
-#                              idvar = "id",
-#                              timevar = "index",
-#                              direction = "wide")
-# 
-# order_matrix <- as.matrix(orders_mat_prep[,-1])
-# 
-# # Clean up the missing values to be FALSE
-# order_matrix[is.na(order_matrix)] <- FALSE
-# 
-# # Clean up names
-# colnames(order_matrix) <- gsub(x=colnames(order_matrix),
-#                                pattern="code_desc.1=\\.", replacement="")
-# 
-# 
-# order_df <- as.data.frame(order_matrix)
-# 
-# order_trans <- as(order_df,"transactions")
+quality(itemsets) <- interestMeasure(itemsets, trans=surgery_basket)
+head(quality(itemsets))
+plot(itemsets, measure=c("support", "allConfidence"), shading="lift")
 
 
-######################################################
-######################################################
-
-itemFrequency(order_trans[, 1:10])
-
-itemFrequencyPlot(order_trans,
-                  type="relative",
-                  topN=10, # can be changed to the number of interest
-                  horiz=TRUE,
-                  col='steelblue3',
-                  xlab='',
-                  main='Item frequency, relative')
-
-itemFrequencyPlot(basket,
-                  type="absolute",
-                  topN=10,
-                  horiz=TRUE,
-                  col='steelblue3',
-                  xlab='',
-                  main='Item frequency, absolute')
-
-
-rules <- apriori(basket,
-                 parameter = list(support=.001,
-                                  confidence=.05,
-                                  minlen=2,
-                                  target='rules' # to mine for rules
-                                  ), 
-                 appearance = list (rhs="Fasciotomy"))
-
-summary(rules)
-
-inspect(sort(rules, by='lift', decreasing = T)[1:25])
-
-quality(rules)$chi <- interestMeasure(rules, measure='chi', significance=T, basket)
-inspect(sort(rules, by='lift', decreasing = T)[1:5])
-
-
-top.rules <- head(sort(rules, decreasing = TRUE, by = "lift"), 20)
-
-plot(top.rules, method = "graph", 
-     control = list(type = "items"),
-     shading = "lift")
 
 ```
 
