@@ -1,0 +1,136 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+```{r}
+trans_full_df %>% 
+  filter.(id == '0101190120043258') %>% 
+  filter.(data_source %in% c('diagnosis',
+                             'procedure',
+                             'complication', 
+                             'injury')) %>%
+  filter.(code_cd != '32') %>% #Removed Extremity Compartment Syndrome Complication
+  filter.(code_cd != '83.65')  %>%  #Remove suture code
+  filter.(code_cd %notin% c('87.03', '87.41', '87.71', '88.01', '88.38'))  %>%  #Removal of CAT Scans
+  mutate.(data_source = fct_relevel(data_source, c('injury', 
+                                                   'diagnosis',
+                                                   'procedure',
+                                                   'complication'))) %>%
+  mutate.(code_desc = case.(data_source == 'injury', chapter_desc, 
+                            data_source == 'diagnosis', subchapter_desc, 
+                            default = code_desc)) %>% 
+  inner_join.(fasc_list, by = 'id') %>%
+  arrange.(id, date, data_source, time) %>%
+  mutate.(index = seq_len(.N), by = id) %>% 
+  select.(date, time, index, subchapter_desc, code_cd, code_desc, data_source)
+
+links <- fx_association_df %>% 
+  filter.(id == '0101190120043258') %>% 
+  arrange.(id, index) %>% 
+  mutate.(source = code_cd, 
+          target = leads.(code_cd)) %>% 
+  select.(id, source, target) %>% 
+  mutate_across.(everything.(), as_character) %>% 
+  summarize.(freq = n.(), by = c(source, target))
+
+
+nodes <- data.frame(name = unique(c(links$source, links$target)))
+
+links  
+  
+
+```
+
+```{r}
+
+library(ggalluvial)
+
+head(as.data.frame(UCBAdmissions), n = 12)
+
+is_alluvia_form(as.data.frame(UCBAdmissions), axes = 1:3, silent = TRUE)
+
+patient_df %>% 
+  filter.(fltr_complication == T) %>% 
+  summarize.(freq = n.(), by = c(sex, age_in_yrs, injury_desc, cause_of_injury_e_code, race, fltr_fasciotomy)) %>%  #, injury_desc, fltr_complication, fltr_diagnosis, fltr_procedure, fltr_fasciotomy)) %>% 
+  ggplot(aes(y = freq, axis1 = peds_adult_flag, axis2 = race, axis3 = sex, axis4 = fltr_procedure)) +
+  geom_alluvium(aes(fill = fltr_fasciotomy), width = 1/12) +
+  geom_stratum(width = 1/12, fill = "black", color = "grey") +
+  geom_label(stat = "stratum", infer.label = TRUE) +
+  scale_x_discrete(limits = c("peds_adult_flag", "race", "sex", "fltr_procedure"), expand = c(.05, .05)) +
+  scale_fill_brewer(type = "qual", palette = "Set1") +
+  ggthemes::theme_igray()
+
+
+patient_df %>% colnames()
+
+
+patient_df %>% 
+  filter.(fltr_complication == T) %>% 
+  summarize.(freq = n.(), by = c(sex, peds_adult_flag, injury_desc, cause_of_injury_e_code, race, fltr_fasciotomy)) %>% 
+  ggplot(aes(x = injury_desc, stratum = fltr_fasciotomy, alluvium = sex,
+           y = freq,
+           fill = peds_adult_flag, label = peds_adult_flag)) +
+  scale_x_discrete(expand = c(.1, .1)) +
+  geom_flow() +
+  geom_stratum(alpha = .5) +
+  geom_text(stat = "stratum", size = 3) +
+  theme(legend.position = "none") +
+  ggtitle("vaccination survey responses at three points in time")
+
+
+
+
+```
+
+
+```{r}
+ggplot(as.data.frame(Titanic),
+       aes(y = Freq,
+           axis1 = Survived, axis2 = Sex, axis3 = Class)) +
+  geom_alluvium(aes(fill = Class),
+                width = 0, knot.pos = 0, reverse = FALSE) +
+  guides(fill = FALSE) +
+  geom_stratum(width = 1/8, reverse = FALSE) +
+  geom_text(stat = "stratum", infer.label = TRUE, reverse = FALSE) +
+  scale_x_continuous(breaks = 1:3, labels = c("Survived", "Sex", "Class")) +
+  coord_flip() +
+  ggtitle("Titanic survival by class and sex")
+```
+
+
+
+
+```{r}
+patient_periods %>%
+  select.(sex, total_stay_time, fltr_fasciotomy, race) %>%
+  mutate(
+    total_stay_hr = as.numeric(total_stay_time, "hours"),
+    total_stay_hr = ifelse.(is.na(total_stay_hr), 0 , total_stay_hr), 
+    total_stay_bins = ntile(total_stay_hr, 2)
+  ) %>%
+  drop_na.() %>%
+  summarize.(freq = n.(),
+             by = c(sex, fltr_fasciotomy, total_stay_bins, race)) %>%  #, injury_desc, fltr_complication, fltr_diagnosis, fltr_procedure, fltr_fasciotomy)) %>%
+  ggplot(aes(
+    y = freq,
+    axis1 = sex,
+    axis2 = total_stay_bins,
+    axis3 = race, 
+    axis4 = fltr_fasciotomy
+  )) +
+  geom_alluvium(aes(fill = fltr_fasciotomy), width = 1 / 12) +
+  geom_stratum(width = 1 / 12,
+               fill = "black",
+               color = "grey") +
+  geom_label(stat = "stratum", infer.label = TRUE) +
+  scale_x_discrete(limits = c("sex", "total_stay_bins", "race", "fltr_fasciotomy"),
+                   expand = c(.05, .05)) +
+  scale_fill_brewer(type = "qual", palette = "Set1") +
+  theme_void() +
+  theme(legend.position = "bottom")
+ggthemes::theme_igray()
+```
+
+
