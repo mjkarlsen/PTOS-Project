@@ -315,9 +315,6 @@ fx_proc_df <- trans_full_df %>%
   mutate.(fltr_fasciotomy = as_factor(fltr_fasciotomy)) %>% 
   select.(index, id, everything.())
 
-# Making new data set for association analysis
-fx_association_df <- fx_proc_df
-
 fx_proc_df <- fx_proc_df %>%
   filter.(
     chapter_desc != 'Extremity Compartment Syndrome (not present on admission)',
@@ -328,7 +325,6 @@ fx_proc_df <- fx_proc_df %>%
     index,
     fltr_fasciotomy,
     code_desc,
-    code_cd,
     subchapter_desc,
     sex,
     race,
@@ -367,7 +363,7 @@ data_balanced_over <- ovun.sample(fltr_fasciotomy ~ . -id -index,
 rf_recipe <- 
   recipe(fltr_fasciotomy ~ ., data = data_balanced_over) %>%
   update_role(fltr_fasciotomy, new_role = "outcome") %>% 
-  update_role(id, code_cd, index, new_role = "ID COL") %>% 
+  update_role(id, index, new_role = "ID COL") %>% 
   step_other(all_nominal(), -id, threshold = 0.001) %>%
   step_unknown(all_nominal()) %>% 
   step_dummy(all_nominal(), -all_outcomes(), -id) %>% 
@@ -378,7 +374,7 @@ rf_recipe <-
 train_data <- prep(rf_recipe) %>% juice()
 test_data <- prep(rf_recipe) %>% bake(test_df)
 
-fit <- rpart(fltr_fasciotomy ~ . -id -index -code_cd,
+fit <- rpart(fltr_fasciotomy ~ . -id -index,
    method="class", 
    data=train_data)
 
@@ -425,72 +421,7 @@ rpart.predict(fit, newdata=test_data, rules=TRUE)
 
 ```
 
-```{r eval=FALSE, include=FALSE}
-
-
-classTree <- SMOTE(fltr_fasciotomy ~ sex +  race, train_df)
-## check the resulting classification tree
-classTree
-## The tree with the unbalanced data set would be
-rpartXse(Species ~ .,data,se=0.5)
-
-
-
-
-rf_recipe <- 
-  recipe(fltr_fasciotomy ~ ., data = train_df) %>%
-  update_role(fltr_fasciotomy, new_role = "outcome") %>% 
-  update_role(id, new_role = "ID COL") %>%
-  step_other(all_nominal(), -id, threshold = 0.001) %>%
-  step_unknown(all_nominal()) %>% 
-  step_dummy(all_nominal(), -all_outcomes(), -id) %>% 
-  step_zv(all_nominal()) %>% 
-  step_naomit(all_predictors()) 
-
-train_data <- prep(rf_recipe) %>% juice()
-test_data <- prep(rf_recipe) %>% bake(test_df)
-
-fit <- rpart(fltr_fasciotomy ~ . -id,
-   method="class", 
-   data=train_data)
-
-rpart.plot(fit, 
-           type = 2,
-           clip.right.labs = FALSE, 
-           # branch = .4,
-           box.palette = "GnBu", 
-           shadow.col = "gray",
-           compress = F, 
-           # extra = 104,
-           cex = .6)
-
-printcp(fit) # display the results
-plotcp(fit) # visualize cross-validation results
-# summary(fit) # detailed summary of splits
-
-vip(fit)
-
-pfit<- prune(fit, cp=0.011205)
-
-
-rpart.plot(pfit, 
-           type = 2,
-           clip.right.labs = FALSE, 
-           # branch = .4,
-           box.palette = "GnBu", 
-           shadow.col = "gray",
-           compress = F, 
-           # extra = 104,
-           cex = .6)
-
-vip(pfit)
-```
-
-
 ## Association Analysis
-
-
-
 
 ```{r}
 trans_full_df %>%
@@ -500,12 +431,20 @@ trans_full_df %>%
   distinct() %>% 
   head(20) %>% 
   arrange.(code_cd)
+
+fx_association_df %>% 
+  filter.(code_desc %like% 'Carpal tunnel release') %>% 
+  filter.( #data_source == 'procedure', 
+          # chapter_desc == 'OPERATIONS ON THE MUSCULOSKELETAL SYSTEM (76-84)',
+          # subchapter_desc == 'Reduction of fracture and dislocation'
+          ) %>% 
+  count(code_desc) %>% 
+  arrange.(-n)
 ```
 
 
 
 ```{r new_association}
-
 
 fasc_list <- patient_periods %>%
   # filter.(fltr_fasciotomy == T) %>% 
@@ -544,15 +483,6 @@ fx_association_df <- trans_full_df %>%
   mutate.(index = seq_len(.N), by = id) %>%
   mutate.(fltr_fasciotomy = as_factor(fltr_fasciotomy)) %>% 
   select.(index, id, everything.())
-
-fx_association_df %>% 
-  filter.(code_desc %like% 'Carpal tunnel release') %>% 
-  filter.( #data_source == 'procedure', 
-          # chapter_desc == 'OPERATIONS ON THE MUSCULOSKELETAL SYSTEM (76-84)',
-          # subchapter_desc == 'Reduction of fracture and dislocation'
-          ) %>% 
-  count(code_desc) %>% 
-  arrange.(-n)
 
 surgery_list <- fx_association_df %>% 
   arrange.(id, index) %>% 
@@ -593,6 +523,7 @@ fasc_rules <- sort(fasc_rules, by='confidence', decreasing = TRUE)
 # inspect(rules)
 fasc_toprules <- fasc_rules[1:20]
 
+set.seed(123)
 plot(fasc_toprules, method="paracoord", control = list(reorder = TRUE))
 
 
