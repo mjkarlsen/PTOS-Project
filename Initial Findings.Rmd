@@ -7,25 +7,33 @@ subtitle: Compartment Syndrome in Pediatric Patients
 
 
 ```{r setup}
-pacman::p_load( traumaR,
-                tidytable,
-                tidymodels,
-                tidyverse, 
-                ggplot2, 
-                ggthemes,
-                rlang,
-                forcats,
-                tictoc, 
-                gt, 
-                vip,
-                DMwR,
-                rpart, 
-                themis,    #github version
-                rpart.plot,
-                arules, 
-                arulesViz,
-                ROSE,
-                yardstick)
+pacman::p_load(
+  # Data Manipulation
+  traumaR,
+  tidytable,
+  tidymodels,
+  tidyverse,
+  rlang,
+  forcats,
+  # Visualization
+  ggplot2,
+  ggalluvial,
+  ggthemes,
+  arulesViz,
+  rpart.plot,
+  gt,
+  vip,
+  # Modeling
+  yardstick,
+  rpart,
+  arules,
+  # Upsampling
+  DMwR,
+  themis, # github version
+  ROSE, 
+  #Misc
+  tictoc
+)
 
 options(scipen=999)  #remove scientific notation
 knitr::opts_chunk$set(echo = FALSE, warning = FALSE)
@@ -78,7 +86,6 @@ It was necessary to transpose this information using [tidytable](https://github.
 * Discharge
 
 ```{r trans_example, paged.print=FALSE}
-
 trans_full_df %>% as_tibble() %>% head()
 
 ```
@@ -91,20 +98,32 @@ The PTOS data contains over 21K patients ranging from all different types of pat
 
 ```{r patient_fx_cnt_gt}
 patient_df %>% 
-  select.(forearm_fx_desc, fasciotomy_desc) %>% 
-  filter.(!is.na(forearm_fx_desc)) %>% 
-  mutate.(fasciotomy = ifelse.(is.na(fasciotomy_desc), 'no_fasc', 'yes_fasc')) %>% 
+  filter.(fltr_procedure == T) %>% 
+  select.(forearm_fx_desc, fltr_fasciotomy) %>% 
+  mutate.(fasciotomy = ifelse.(fltr_fasciotomy == F, 'no_fasc', 'yes_fasc')) %>% 
   summarize.(total = n.(), by = c(forearm_fx_desc, fasciotomy)) %>%
   arrange.(-total) %>% 
   pivot_wider.(names_from = fasciotomy, values_from = total) %>% 
-  mutate.(total_no = no_fasc/sum(no_fasc, na.rm = TRUE), 
-          total_yes = yes_fasc/sum(yes_fasc, na.rm = TRUE), 
+  mutate.(col_no = no_fasc/sum(no_fasc, na.rm = TRUE), 
+          col_yes = yes_fasc/sum(yes_fasc, na.rm = TRUE), 
           total = no_fasc + yes_fasc, 
-          total_prct = total/sum(total)) %>% 
-  arrange.(-total_yes, forearm_fx_desc, ) %>% 
-  select.(forearm_fx_desc, yes_fasc, total_yes, no_fasc, total_no, total, total_prct) %>% 
+          row_yes = yes_fasc/total, 
+          row_no = no_fasc/total, 
+          total_prct = total/sum(total)
+          ) %>% 
+  arrange.(-col_yes, forearm_fx_desc, ) %>% 
+  select.(forearm_fx_desc, 
+          yes_fasc, 
+          col_yes, 
+          no_fasc, 
+          col_no, 
+          total, 
+          total_prct, 
+          row_yes, 
+          row_no) %>% 
   gt(
-    rowname_col = 'forearm_fx_desc'
+    rowname_col = 'forearm_fx_desc', 
+    # groupname_col = "forearm_fx_desc"
     ) %>% 
   tab_header(
     title = md("Patients with Forearm Procedures"),
@@ -112,34 +131,170 @@ patient_df %>%
   ) %>% 
   tab_spanner(
     label = "Fasciotomy", 
-    columns = vars(yes_fasc, total_yes)
+    columns = vars(yes_fasc, col_yes, row_yes)
   ) %>% 
   tab_spanner(
     label = "No Fasciotomy", 
-    columns = vars(no_fasc, total_no)
+    columns = vars(no_fasc, col_no, row_no)
   ) %>% 
   tab_spanner(
     label = "Grand Total", 
     columns = vars(total, total_prct), 
   ) %>% 
+  tab_options(grand_summary_row.background.color = "gray", 
+              summary_row.background.color = "lightgrey") %>% 
   cols_label(yes_fasc = "#", 
-             total_yes = "% of Total", 
+             col_yes = "% of Column Total",
+             row_yes = "% of Row Total", 
              no_fasc = "#", 
-             total_no = "% of Total", 
+             col_no = "% of Column Total", 
+             row_no = "% of Row Total", 
              total = "#", 
              total_prct = "% of Total") %>%
-  fmt_percent(vars(total_yes, total_no, total_prct), decimals = 1) %>% 
+  fmt_percent(vars(col_yes, col_no, row_yes, row_no, total_prct), decimals = 1) %>% 
   fmt_number(vars(yes_fasc, no_fasc, total), decimals = 0) %>% 
-  summary_rows(columns = vars( total_yes, total_no, total_prct),
+  summary_rows(columns = vars( col_yes, col_no, total_prct),
                fns = list(Total = ~sum(.)),
                formatter = fmt_percent,
-               decimals = 1) %>%
+               decimals = 1) %>% 
+  summary_rows(columns = vars( row_yes, row_no),
+               fns = list(Mean = ~mean(.),
+                          SD = ~sd(.)),
+               formatter = fmt_percent,
+               decimals = 1) %>% 
   summary_rows(columns = vars(yes_fasc,  no_fasc, total),
                fns = list(Total = ~sum(.)),
                formatter = fmt_number,
-               decimals = 0)
+               decimals = 0) %>% 
+  data_color(
+    columns = vars(row_yes),
+    apply_to = "fill", 
+    colors = scales::col_numeric(
+      palette = paletteer::paletteer_d(
+        palette = "ggsci::red_material"
+        ) %>% as.character(),
+      domain = NULL
+      )
+  ) %>% 
+  cols_align(align = "center")
   
 ```
+
+```{r}
+
+prct_of_row_total <- function(x, grand_total) {
+  # scales::label_percent(accuracy = 0.01) 
+  col_value <- (sum(x)/grand_total)
+  
+  return(col_value)
+   # formatC( col_value,
+   #        format = "f", digits = 2)
+}
+
+
+prct_of_row_total(232, 25500)
+
+
+patient_df %>% 
+  filter.(fltr_procedure == T) %>% 
+  select.(forearm_fx_desc, fltr_fasciotomy, peds_adult_flag) %>% 
+  mutate.(fasciotomy = ifelse.(fltr_fasciotomy == F, 'no_fasc', 'yes_fasc')) %>% 
+  summarize.(total = n.(), by = c(forearm_fx_desc, fasciotomy, peds_adult_flag)) %>%
+  arrange.(-total) %>% 
+  pivot_wider.(names_from = fasciotomy, values_from = total) %>% 
+  mutate.(col_no = no_fasc/sum(no_fasc, na.rm = TRUE), 
+          col_yes = yes_fasc/sum(yes_fasc, na.rm = TRUE), 
+          total = no_fasc + yes_fasc, 
+          row_yes = yes_fasc/total, 
+          row_no = no_fasc/total, 
+          total_prct = total/sum(total)
+          ) %>% 
+  arrange.(-row_yes, forearm_fx_desc, ) %>% 
+  select.(forearm_fx_desc, 
+          peds_adult_flag, 
+          yes_fasc, 
+          col_yes, 
+          no_fasc, 
+          col_no, 
+          total, 
+          total_prct, 
+          row_yes, 
+          row_no) %>% 
+  gt(
+    rowname_col = 'forearm_fx_desc', 
+    groupname_col = "peds_adult_flag"
+    ) %>% 
+  tab_header(
+    title = md("Peds and Adult Breakout of Forearm Procedures"),
+    subtitle = md("In the PTOS Data")
+  ) %>% 
+  tab_spanner(
+    label = "Fasciotomy", 
+    columns = vars(yes_fasc, col_yes, row_yes)
+  ) %>% 
+  tab_spanner(
+    label = "No Fasciotomy", 
+    columns = vars(no_fasc, col_no, row_no)
+  ) %>% 
+  tab_spanner(
+    label = "Grand Total", 
+    columns = vars(total, total_prct), 
+  ) %>% 
+  tab_options(grand_summary_row.background.color = "gray", 
+              summary_row.background.color = "lightgrey") %>% 
+  cols_label(yes_fasc = "#", 
+             col_yes = "% of Column Total",
+             row_yes = "% of Row Total", 
+             no_fasc = "#", 
+             col_no = "% of Column Total", 
+             row_no = "% of Row Total", 
+             total = "#", 
+             total_prct = "% of Total") %>%
+  fmt_percent(vars(col_yes, col_no, row_yes, row_no, total_prct), decimals = 1) %>% 
+  fmt_number(vars(yes_fasc, no_fasc, total), decimals = 0) %>% 
+  summary_rows(groups = TRUE, 
+               columns = vars( col_yes, col_no, total_prct),
+               fns = list(Total = ~sum(.)),
+               formatter = fmt_percent,
+               decimals = 1) %>% 
+  summary_rows(groups = TRUE, 
+               columns = vars(yes_fasc,  no_fasc, total),
+               fns = list(Total = ~sum(.)),
+               formatter = fmt_number,
+               decimals = 0) %>% 
+  grand_summary_rows(
+    columns = vars(yes_fasc,  no_fasc, total),
+    fns = list('Grand Total' = ~sum(.)), 
+    formatter = fmt_number,
+    decimals = 0
+  ) %>% 
+  grand_summary_rows(
+    columns = vars( col_yes, col_no, total_prct),
+    fns = list('Grand Total' = ~sum(.)), 
+    formatter = fmt_percent,
+    decimals = 1
+  ) %>% 
+  data_color(
+    columns = vars(row_yes),
+    apply_to = "fill", 
+    colors = scales::col_numeric(
+      palette = paletteer::paletteer_d(
+        palette = "ggsci::red_material"
+        ) %>% as.character(),
+      domain = NULL
+      )
+  ) %>% 
+  cols_align(align = "center")
+
+# 
+# prop.test(x = c(409, 34), n = c(11035, 849)) #, alternative = "greater")
+# prop.test(x = c(115, 18), n = c(5572, 1377), conf.level = 0.95) #, alternative = "greater")
+# prop.test(x = c(27, 13), n = c(1157, 379), alternative = "less") #, alternative = "greater")
+# prop.test(x = c(11, 3), n = c(232, 68)) #, alternative = "greater")
+
+  
+```
+
 
 ### Patients with Forearm and Fasciotomy Surgery
 
@@ -191,10 +346,76 @@ patient_df %>%
   summary_rows(columns = vars(Adult,  Peds, total),
                fns = list(Total = ~sum(.)),
                formatter = fmt_number,
-               decimals = 0) 
+               decimals = 0)
+
+
+prct_of_row_total(630, 21299)
+
+
+
+
 ```
 
+
 ### Comparing Demograhics and Medical Procedures between Adults and Pediatric Patients 
+
+```{r}
+patient_df %>% 
+  filter.(peds_adult_flag == 'Peds', 
+          fltr_procedure == T) %>% 
+  summarize.(cnt = n.(), by = c(peds_adult_flag, fltr_fasciotomy, forearm_fx_desc)) %>% 
+  pivot_wider.(names_from = fltr_fasciotomy, values_from = cnt)
+
+
+patient_df %>% 
+  filter.(peds_adult_flag == 'Peds',) %>% 
+  select.(peds_adult_flag, fltr_fasciotomy, fltr_procedure) %>% 
+  mutate_across.(is.logical, as.integer) %>% 
+  t_stat(formula = fltr_fasciotomy ~ fltr_procedure, order = c(1, 0))
+
+
+
+
+  
+```
+
+# Significance Testing 
+## Comparing Forearm Procedures between Adults & Peds
+
+```{r t_testing}
+
+t_test_results <- patient_df %>% 
+  filter.(fltr_procedure == T, 
+          peds_adult_flag == "Adult") %>% 
+  mutate.(fx_desc = ifelse.(forearm_fx_desc == "Op red-int fix rad/ulna", 
+                            "Op red-int fix rad/ulna", 
+                            "Others")) %>% 
+  mutate_across.(is.logical, as.integer) %>% 
+  select.(fltr_fasciotomy, fx_desc, peds_adult_flag) 
+
+set.seed(163)
+t_null_perm <- t_test_results %>% 
+  specify(fltr_fasciotomy ~ fx_desc) %>%
+  hypothesize(null = "independence") %>%
+  generate(reps = 1000, type = "permute") %>%
+  calculate(stat = "t", order = c("Op red-int fix rad/ulna",
+                                  "Others"))
+
+obs_t <- t_test_results %>% 
+  specify(fltr_fasciotomy ~ fx_desc) %>%  
+  calculate(stat = "t", order = c("Op red-int fix rad/ulna",
+                                  "Others"))
+
+obs_t
+
+t_null_perm %>% 
+  get_p_value(obs_stat = obs_t, direction = "two_sided")
+
+visualize(t_null_perm) +
+  shade_p_value(obs_stat = obs_t, direction = "two_sided")
+```
+
+
 
 ```{r patient_graphs}
 
@@ -389,6 +610,7 @@ rpart.plot(fit,
 
 printcp(fit) # display the results
 plotcp(fit) # visualize cross-validation results
+vip(fit)
 # summary(fit) # detailed summary of splits
 ```
 
@@ -410,14 +632,9 @@ rpart.plot(pfit,
 
 vip(pfit)
 
-```
-
-```{r eval=FALSE, include=FALSE}
-
 rpart.rules(fit, style = "tallw")
 
 rpart.predict(fit, newdata=test_data, rules=TRUE)
-
 
 ```
 
@@ -433,7 +650,7 @@ trans_full_df %>%
   arrange.(code_cd)
 
 fx_association_df %>% 
-  filter.(code_desc %like% 'Carpal tunnel release') %>% 
+  filter.(code_desc %like% 'Venous cath NEC') %>% 
   filter.( #data_source == 'procedure', 
           # chapter_desc == 'OPERATIONS ON THE MUSCULOSKELETAL SYSTEM (76-84)',
           # subchapter_desc == 'Reduction of fracture and dislocation'
@@ -449,7 +666,7 @@ fx_association_df %>%
 fasc_list <- patient_periods %>%
   # filter.(fltr_fasciotomy == T) %>% 
   # filter.(fltr_procedure == T) %>%
-  filter.(peds_adult_flag == "Adult") %>%
+  # filter.(peds_adult_flag == "Adult") %>%
   select.(
     id,
     fltr_fasciotomy,
@@ -470,7 +687,7 @@ fx_association_df <- trans_full_df %>%
                              'complication', 
                              'injury')) %>%
   filter.(code_cd != '32') %>% #Removed Extremity Compartment Syndrome Complication
-  filter.(code_cd != '83.65')  %>%  #Remove suture code
+  # filter.(code_cd != '83.65')  %>%  #Remove suture code
   filter.(code_cd %notin% c('87.03', '87.41', '87.71', '88.01', '88.38'))  %>%  #Removal of CAT Scans
   mutate.(data_source = fct_relevel(data_source, c('injury', 
                                                    'diagnosis',
@@ -554,6 +771,43 @@ plot(itemsets, measure=c("support", "allConfidence"), shading="lift")
 
 
 ```
+
+
+## Sankey Analysis
+
+```{r}
+patient_periods %>%
+  select.(sex, total_stay_time, fltr_fasciotomy, race) %>%
+  mutate(
+    total_stay_hr = as.numeric(total_stay_time, "hours"),
+    total_stay_hr = ifelse.(is.na(total_stay_hr), 0 , total_stay_hr), 
+    total_stay_bins = ntile(total_stay_hr, 2)
+  ) %>%
+  drop_na.() %>%
+  summarize.(freq = n.(),
+             by = c(sex, fltr_fasciotomy, total_stay_bins, race)) %>%  #, injury_desc, fltr_complication, fltr_diagnosis, fltr_procedure, fltr_fasciotomy)) %>%
+  filter.(sex %in% c('MALE', 'FEMALE')) %>% 
+  ggplot(aes(
+    y = freq,
+    axis1 = race,
+    axis2 = sex,
+    axis3 = total_stay_bins, 
+    axis4 = fltr_fasciotomy
+  )) +
+  geom_alluvium(aes(fill = fltr_fasciotomy), width = 1/8) +
+  geom_stratum(width = 1/8,
+               fill = "black",
+               color = "grey") +
+  geom_label(stat = "stratum", infer.label = TRUE) +
+  scale_x_discrete(limits = c("sex", "total_stay_bins", "race", "fltr_fasciotomy"),
+                   expand = c(.05, .05)) +
+  scale_y_continuous(trans='log2') +
+  scale_fill_brewer(type = "qual", palette = "Set1") +
+  matt_theme() +
+  theme(legend.position = "bottom") 
+```
+
+
 
 
 # Over the next 3 Weeks
