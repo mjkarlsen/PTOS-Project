@@ -23,6 +23,8 @@ pacman::p_load(
   rpart.plot,
   gt,
   vip,
+  ggdark, 
+  viridis,
   # Modeling
   yardstick,
   rpart,
@@ -157,11 +159,6 @@ patient_df %>%
                fns = list(Total = ~sum(.)),
                formatter = fmt_percent,
                decimals = 1) %>% 
-  summary_rows(columns = vars( row_yes, row_no),
-               fns = list(Mean = ~mean(.),
-                          SD = ~sd(.)),
-               formatter = fmt_percent,
-               decimals = 1) %>% 
   summary_rows(columns = vars(yes_fasc,  no_fasc, total),
                fns = list(Total = ~sum(.)),
                formatter = fmt_number,
@@ -180,20 +177,8 @@ patient_df %>%
   
 ```
 
-```{r}
 
-prct_of_row_total <- function(x, grand_total) {
-  # scales::label_percent(accuracy = 0.01) 
-  col_value <- (sum(x)/grand_total)
-  
-  return(col_value)
-   # formatC( col_value,
-   #        format = "f", digits = 2)
-}
-
-
-prct_of_row_total(232, 25500)
-
+```{r summary_results_peds_adult}
 
 patient_df %>% 
   filter.(fltr_procedure == T) %>% 
@@ -296,126 +281,8 @@ patient_df %>%
 ```
 
 
-### Patients with Forearm and Fasciotomy Surgery
-
-```{r patient_fx_fasc_gt}
-patient_df %>%
-    filter.(fltr_procedure == TRUE, 
-          fltr_fasciotomy == TRUE) %>% 
-  select.(forearm_fx_desc, peds_adult_flag) %>% 
-  summarize.(total = n.(), by = c(forearm_fx_desc, peds_adult_flag)) %>%
-  arrange.(-total) %>% 
-  pivot_wider.(names_from = peds_adult_flag, values_from = total) %>% 
-  mutate.(total_peds = Peds/sum(Peds, na.rm = TRUE), 
-          total_adults = Adult/sum(Adult, na.rm = TRUE), 
-          total = Peds + Adult, 
-          total_prct = total/sum(total)) %>% 
-  arrange.(-total_prct, forearm_fx_desc, ) %>% 
-  select.(forearm_fx_desc, total_peds, total_adults, Adult, Peds, total, total_prct) %>% 
-  gt(
-    rowname_col = 'forearm_fx_desc'
-    ) %>% 
-  tab_header(
-    title = md("Patients with Forearm & Fasciotomy Procedures"),
-    subtitle = md("In the PTOS Data")
-  ) %>% 
-  tab_spanner(
-    label = "Adults", 
-    columns = vars(Adult, total_adults)
-  ) %>% 
-  tab_spanner(
-    label = "Peds", 
-    columns = vars(Peds, total_peds), 
-  ) %>% 
-  tab_spanner(
-    label = "Grand Total", 
-    columns = vars(total, total_prct), 
-  ) %>% 
-  cols_label(Adult = "#", 
-             total_adults = "% of Total", 
-             Peds = "#", 
-             total_peds = "% of Total", 
-             total = "#", 
-             total_prct = "% of Total") %>%
-  fmt_percent(vars(total_adults, total_peds, total_prct), decimals = 1) %>% 
-  fmt_number(vars(Adult, Peds, total), decimals = 0) %>% 
-  summary_rows(columns = vars( total_peds, total_adults, total_prct),
-               fns = list(Total = ~sum(.)),
-               formatter = fmt_percent,
-               decimals = 1) %>%
-  summary_rows(columns = vars(Adult,  Peds, total),
-               fns = list(Total = ~sum(.)),
-               formatter = fmt_number,
-               decimals = 0)
-
-
-prct_of_row_total(630, 21299)
-
-
-
-
-```
-
 
 ### Comparing Demograhics and Medical Procedures between Adults and Pediatric Patients 
-
-```{r}
-patient_df %>% 
-  filter.(peds_adult_flag == 'Peds', 
-          fltr_procedure == T) %>% 
-  summarize.(cnt = n.(), by = c(peds_adult_flag, fltr_fasciotomy, forearm_fx_desc)) %>% 
-  pivot_wider.(names_from = fltr_fasciotomy, values_from = cnt)
-
-
-patient_df %>% 
-  filter.(peds_adult_flag == 'Peds',) %>% 
-  select.(peds_adult_flag, fltr_fasciotomy, fltr_procedure) %>% 
-  mutate_across.(is.logical, as.integer) %>% 
-  t_stat(formula = fltr_fasciotomy ~ fltr_procedure, order = c(1, 0))
-
-
-
-
-  
-```
-
-# Significance Testing 
-## Comparing Forearm Procedures between Adults & Peds
-
-```{r t_testing}
-
-t_test_results <- patient_df %>% 
-  filter.(fltr_procedure == T, 
-          peds_adult_flag == "Adult") %>% 
-  mutate.(fx_desc = ifelse.(forearm_fx_desc == "Op red-int fix rad/ulna", 
-                            "Op red-int fix rad/ulna", 
-                            "Others")) %>% 
-  mutate_across.(is.logical, as.integer) %>% 
-  select.(fltr_fasciotomy, fx_desc, peds_adult_flag) 
-
-set.seed(163)
-t_null_perm <- t_test_results %>% 
-  specify(fltr_fasciotomy ~ fx_desc) %>%
-  hypothesize(null = "independence") %>%
-  generate(reps = 1000, type = "permute") %>%
-  calculate(stat = "t", order = c("Op red-int fix rad/ulna",
-                                  "Others"))
-
-obs_t <- t_test_results %>% 
-  specify(fltr_fasciotomy ~ fx_desc) %>%  
-  calculate(stat = "t", order = c("Op red-int fix rad/ulna",
-                                  "Others"))
-
-obs_t
-
-t_null_perm %>% 
-  get_p_value(obs_stat = obs_t, direction = "two_sided")
-
-visualize(t_null_perm) +
-  shade_p_value(obs_stat = obs_t, direction = "two_sided")
-```
-
-
 
 ```{r patient_graphs}
 
@@ -444,9 +311,9 @@ bar_func <- function(data, col){
                fill = peds_adult_flag,
                label = paste0(total))) + 
     geom_bar(position = "dodge", stat = "identity") +
-    scale_fill_manual(values=c("#999999", "#56B4E9"))+
     geom_text(hjust = 'left', y = 0)+
-    ggthemes::theme_few() +
+    ggdark::dark_theme_classic() +
+    ggsci::scale_fill_jco() +
     coord_flip() +
     labs(title = toupper(expr_text(col)),
          y = "Count of Patients",
@@ -491,7 +358,8 @@ patient_df %>%
   ggplot(aes(x = fltr_fasciotomy, group = fltr_fasciotomy, label = ..count..)) +
   geom_bar(aes(y = ..count.., fill = factor(..x..)), stat = "count") +
   geom_text( stat= "count", vjust = -.5) +
-  ggthemes::theme_few() +
+  ggdark::dark_theme_classic() +
+  ggsci::scale_fill_jco() +
   labs(title = "Class Imbalance for Fasciotomy",
          y = "Count of Patients",
          x = 'Patients That Had Fasciotomy') +
@@ -775,42 +643,123 @@ plot(itemsets, measure=c("support", "allConfidence"), shading="lift")
 
 ## Sankey Analysis
 
-```{r}
+```{r sankey_one}
 patient_periods %>%
-  select.(sex, total_stay_time, fltr_fasciotomy, race) %>%
+  select.(sex, fltr_fasciotomy, total_stay_time, race, forearm_fx_desc, peds_adult_flag) %>% 
   mutate(
     total_stay_hr = as.numeric(total_stay_time, "hours"),
     total_stay_hr = ifelse.(is.na(total_stay_hr), 0 , total_stay_hr), 
-    total_stay_bins = ntile(total_stay_hr, 2)
+    total_stay_bins = ntile(total_stay_hr, 2), 
+    forearm_procedure = case.(forearm_fx_desc %in% c('Open reduc-radius/uln fx', 
+                                                     'Op red-int fix rad/ulna' ), "Open", 
+                              default = "Closed")
   ) %>%
   drop_na.() %>%
   summarize.(freq = n.(),
-             by = c(sex, fltr_fasciotomy, total_stay_bins, race)) %>%  #, injury_desc, fltr_complication, fltr_diagnosis, fltr_procedure, fltr_fasciotomy)) %>%
+             by = c(sex, fltr_fasciotomy, total_stay_bins, peds_adult_flag, forearm_procedure)) %>%  
   filter.(sex %in% c('MALE', 'FEMALE')) %>% 
   ggplot(aes(
     y = freq,
-    axis1 = race,
+    axis1 = forearm_procedure, 
     axis2 = sex,
-    axis3 = total_stay_bins, 
-    axis4 = fltr_fasciotomy
+    axis3 = peds_adult_flag,
+    axis5 = fltr_fasciotomy
   )) +
-  geom_alluvium(aes(fill = fltr_fasciotomy), width = 1/8) +
+  geom_alluvium(aes(fill = fltr_fasciotomy), width = 1/8, absolute = FALSE, lode.guidance = 'backward') +
   geom_stratum(width = 1/8,
                fill = "black",
-               color = "grey") +
+               color = "grey", absolute = FALSE) +
   geom_label(stat = "stratum", infer.label = TRUE) +
-  scale_x_discrete(limits = c("sex", "total_stay_bins", "race", "fltr_fasciotomy"),
+  scale_x_discrete(limits = c("Forearm Procedure", "Sex", "peds_adult_flag", "Fasciotomy"),
                    expand = c(.05, .05)) +
   scale_y_continuous(trans='log2') +
-  scale_fill_brewer(type = "qual", palette = "Set1") +
-  matt_theme() +
-  theme(legend.position = "bottom") 
+  ggdark::dark_theme_classic() +
+  ggsci::scale_fill_jco(name = "Fasciotomy") +
+  theme(legend.position = "bottom",
+        axis.text.y = element_blank(), 
+        axis.title = element_blank(), 
+        axis.line = element_blank(), 
+        axis.ticks = element_blank()) 
 ```
 
 
+```{r sankey_two}
+patient_periods %>%
+  select.(sex, fltr_fasciotomy, total_stay_time, race, forearm_fx_desc, peds_adult_flag) %>% 
+  mutate(
+    total_stay_hr = as.numeric(total_stay_time, "hours"),
+    total_stay_hr = ifelse.(is.na(total_stay_hr), 0 , total_stay_hr), 
+    total_stay_bins = ntile(total_stay_hr, 2), 
+    forearm_procedure = case.(forearm_fx_desc %in% c('Open reduc-radius/uln fx', 
+                                                     'Op red-int fix rad/ulna' ), "Open", 
+                              default = "Closed")
+  ) %>%
+  drop_na.() %>%
+  summarize.(freq = n.(),
+             by = c(sex, fltr_fasciotomy, total_stay_bins, peds_adult_flag, forearm_procedure)) %>%  
+  filter.(sex %in% c('MALE', 'FEMALE')) %>% 
+  ggplot(aes(
+    y = freq,
+    axis1 = forearm_procedure, 
+    axis2 = sex,
+    axis3 = peds_adult_flag,
+    axis5 = fltr_fasciotomy
+  )) +
+  geom_stratum(fill = "black",
+               color = "grey") +
+  geom_text(stat = "stratum", infer.label = TRUE) +
+  scale_x_discrete(limits = c("Forearm Procedure", "Sex", "peds_adult_flag", "Fasciotomy"))+ 
+  geom_flow(aes(fill = freq), stat = "alluvium",
+               lode.guidance = "backward") +
+    ggdark::dark_theme_classic()  +
+    theme(legend.position = "bottom",
+        axis.text.y = element_blank(), 
+        axis.title = element_blank(), 
+        axis.line = element_blank(), 
+        axis.ticks = element_blank())
+```
 
 
 # Over the next 3 Weeks
 * Random Forest and XGBoost using SMOTE data
 * Association Analysis for series of procedures to understand if there is a sequence of medical events which leads to an increased probability of a patient having complications from compartment syndrome. 
 * Shiny Interactive Dashboard
+
+
+
+# Significance Testing 
+## Comparing Forearm Procedures between Adults & Peds
+
+```{r t_testing}
+
+t_test_results <- patient_df %>% 
+  filter.(fltr_procedure == T, 
+          peds_adult_flag == "Adult") %>% 
+  mutate.(fx_desc = ifelse.(forearm_fx_desc == "Op red-int fix rad/ulna", 
+                            "Op red-int fix rad/ulna", 
+                            "Others")) %>% 
+  mutate_across.(is.logical, as.integer) %>% 
+  select.(fltr_fasciotomy, fx_desc, peds_adult_flag) 
+
+set.seed(163)
+t_null_perm <- t_test_results %>% 
+  specify(fltr_fasciotomy ~ fx_desc) %>%
+  hypothesize(null = "independence") %>%
+  generate(reps = 1000, type = "permute") %>%
+  calculate(stat = "t", order = c("Op red-int fix rad/ulna",
+                                  "Others"))
+
+obs_t <- t_test_results %>% 
+  specify(fltr_fasciotomy ~ fx_desc) %>%  
+  calculate(stat = "t", order = c("Op red-int fix rad/ulna",
+                                  "Others"))
+
+obs_t
+
+t_null_perm %>% 
+  get_p_value(obs_stat = obs_t, direction = "two_sided")
+
+visualize(t_null_perm) +
+  shade_p_value(obs_stat = obs_t, direction = "two_sided")
+```
+
