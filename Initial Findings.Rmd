@@ -37,6 +37,9 @@ pacman::p_load(
   tictoc
 )
 
+
+#https://nanx.me/ggsci/reference/pal_jco.html   #Color palettes
+
 options(scipen=999)  #remove scientific notation
 knitr::opts_chunk$set(echo = FALSE, warning = FALSE)
 ```
@@ -478,8 +481,13 @@ rpart.plot(fit,
 
 printcp(fit) # display the results
 plotcp(fit) # visualize cross-validation results
-vip(fit)
+vip(fit, 
+    aesthetics = list(fill = "#EFC000FF")) +
+  labs(title = "Variable Importance for Ranger Model") +
+  ggdark::dark_theme_classic() +
+  scale_x_discrete(labels = function(x) str_wrap(janitor::make_clean_names(x, case = "title"), width = 50))
 # summary(fit) # detailed summary of splits
+
 ```
 
 This random forest model has many splits and it is overly complex. I will use a pruning feature and reduce the amount of branches created by using the complexity parameter. The new model below shows a cleaner model with less complexity. Male/Female Split - the initial split between male and female suggests that males are more prone to this complication. It might be necessary to upsample between the male and female since males make up 90% of population. 
@@ -498,36 +506,17 @@ rpart.plot(pfit,
            # extra = 104,
            cex = .6)
 
-vip(pfit)
+vip(pfit, 
+    aesthetics = list(fill = "#EFC000FF")) +
+  labs(title = "Variable Importance for Ranger Model") +
+  ggdark::dark_theme_classic() +
+  scale_x_discrete(labels = function(x) str_wrap(janitor::make_clean_names(x, case = "title"), width = 50))
 
-rpart.rules(fit, style = "tallw")
-
-rpart.predict(fit, newdata=test_data, rules=TRUE)
+# rpart.rules(fit, style = "tallw") # Examples of rules from RPart
 
 ```
 
 ## Association Analysis
-
-```{r}
-trans_full_df %>%
-  filter.(code_desc %like% "Carpal tunnel") %>%
-  # filter.(data_source == 'injury') %>% 
-  select(code_cd, code_desc, chapter_desc, subchapter_desc, data_source) %>% 
-  distinct() %>% 
-  head(20) %>% 
-  arrange.(code_cd)
-
-fx_association_df %>% 
-  filter.(code_desc %like% 'Venous cath NEC') %>% 
-  filter.( #data_source == 'procedure', 
-          # chapter_desc == 'OPERATIONS ON THE MUSCULOSKELETAL SYSTEM (76-84)',
-          # subchapter_desc == 'Reduction of fracture and dislocation'
-          ) %>% 
-  count(code_desc) %>% 
-  arrange.(-n)
-```
-
-
 
 ```{r new_association}
 
@@ -610,41 +599,15 @@ fasc_toprules <- fasc_rules[1:20]
 
 set.seed(123)
 plot(fasc_toprules, method="paracoord", control = list(reorder = TRUE))
+plot(fasc_toprules, method="graph", engine="htmlwidget", layout=igraph::with_graphopt(spring.const=5, mass=50))
 
 
 ```
-
-```{r}
-plot(topRules, method="graph", engine="htmlwidget", igraphLayout = "layout_in_circle")
-plot(topRules, method="graph", engine="htmlwidget", igraphLayout = "layout_on_grid")
-plot(topRules, method="graph", engine="htmlwidget", igraphLayout = "layout_as_star")
-plot(topRules, method="graph", engine="htmlwidget", layout=igraph::with_graphopt(spring.const=5, mass=50))
-# plot(topRules, method="graph", engine="graphviz")
-
-
-# plot(topRules, measure = c("support", "lift"), shading = "confidence")
-# plot(topRules, method="graph")
-# plot(topRules, method="two-key plot")
-
-
-itemsets <- eclat(surgery_basket, parameter = list(support = 0.02, minlen=2))
-plot(itemsets)
-plot(itemsets, method="graph")
-plot(itemsets, method="paracoord", alpha=.5, reorder=TRUE)
-
-quality(itemsets) <- interestMeasure(itemsets, trans=surgery_basket)
-head(quality(itemsets))
-plot(itemsets, measure=c("support", "allConfidence"), shading="lift")
-
-
-
-```
-
 
 ## Sankey Analysis
 
 ```{r sankey_one}
-patient_periods %>%
+sankey_graph <- patient_periods %>%
   select.(sex, fltr_fasciotomy, total_stay_time, race, forearm_fx_desc, peds_adult_flag) %>% 
   mutate(
     total_stay_hr = as.numeric(total_stay_time, "hours"),
@@ -660,9 +623,9 @@ patient_periods %>%
   filter.(sex %in% c('MALE', 'FEMALE')) %>% 
   ggplot(aes(
     y = freq,
-    axis1 = forearm_procedure, 
-    axis2 = sex,
-    axis3 = peds_adult_flag,
+    axis1 = peds_adult_flag,  
+    axis2 = forearm_procedure,
+    axis3 = total_stay_bins,
     axis5 = fltr_fasciotomy
   )) +
   geom_alluvium(aes(fill = fltr_fasciotomy), width = 1/8, absolute = FALSE, lode.guidance = 'backward') +
@@ -670,16 +633,25 @@ patient_periods %>%
                fill = "black",
                color = "grey", absolute = FALSE) +
   geom_label(stat = "stratum", infer.label = TRUE) +
-  scale_x_discrete(limits = c("Forearm Procedure", "Sex", "peds_adult_flag", "Fasciotomy"),
+  scale_x_discrete(limits = c("Peds Adult", "Forearm Procedure", "Total Stay Bin", "Fasciotomy"),
                    expand = c(.05, .05)) +
   scale_y_continuous(trans='log2') +
   ggdark::dark_theme_classic() +
   ggsci::scale_fill_jco(name = "Fasciotomy") +
+  labs(title = "Sankey Flow") +
   theme(legend.position = "bottom",
         axis.text.y = element_blank(), 
         axis.title = element_blank(), 
         axis.line = element_blank(), 
         axis.ticks = element_blank()) 
+
+sankey_graph
+
+# plotly::ggplotly(sankey_graph)
+# 
+# library(htmlwidgets)
+# saveWidget(sankey_graph, file = "E:/Northwestern/12 - Capstone/Project/interactivesankey.html")
+
 ```
 
 
