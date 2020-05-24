@@ -102,7 +102,7 @@ I decided to filter for patients that had a forearm fracture which led to compar
 The PTOS data contains over 21K patients ranging from all different types of patient demographics and medical procedures. This data includes over 630 patients that have both forearm surgery and fasciotomy. Initial observations show a slightly higher likelihood of **Op red-int fix rad/ulna** procedures resulting in compartment syndrome complications.
 
 ```{r patient_fx_cnt_gt}
-patient_df %>% 
+gt_graph_1 <- patient_df %>% 
   filter.(fltr_procedure == T) %>% 
   select.(forearm_fx_desc, fltr_fasciotomy) %>% 
   mutate.(fasciotomy = ifelse.(fltr_fasciotomy == F, 'no_fasc', 'yes_fasc')) %>% 
@@ -177,13 +177,20 @@ patient_df %>%
       )
   ) %>% 
   cols_align(align = "center")
+
+gt_graph_1
+
+gt_graph_1 %>% 
+  gtsave(paste0(expr(gt_graph_1),".png") , expand = 10,
+    path = paste0(getwd(),"/images/")
+  )
   
 ```
 
 
 ```{r summary_results_peds_adult}
 
-patient_df %>% 
+gt_graph_2 <- patient_df %>% 
   filter.(fltr_procedure == T) %>% 
   select.(forearm_fx_desc, fltr_fasciotomy, peds_adult_flag) %>% 
   mutate.(fasciotomy = ifelse.(fltr_fasciotomy == F, 'no_fasc', 'yes_fasc')) %>% 
@@ -273,6 +280,13 @@ patient_df %>%
       )
   ) %>% 
   cols_align(align = "center")
+
+gt_graph_2
+
+gt_graph_2 %>% 
+  gtsave("gt_graph_2.png" , expand = 10,
+    path = paste0(getwd(),"/images/")
+  )
 
 # 
 # prop.test(x = c(409, 34), n = c(11035, 849)) #, alternative = "greater")
@@ -646,6 +660,45 @@ sankey_graph <- patient_periods %>%
         axis.ticks = element_blank()) 
 
 sankey_graph
+
+# plotly::ggplotly(sankey_graph)
+# 
+# library(htmlwidgets)
+# saveWidget(sankey_graph, file = "E:/Northwestern/12 - Capstone/Project/interactivesankey.html")
+
+```
+
+
+## Sankey Analysis
+
+```{r sankey_one}
+patient_periods %>%
+  select.( fltr_fasciotomy, injury_desc) %>% 
+  drop_na.() %>%
+  summarize.(freq = n.(),
+             by = c( fltr_fasciotomy, injury_desc)) %>%  
+  ggplot(aes(
+    y = freq,
+    axis1 = injury_desc,  
+    axis5 = fltr_fasciotomy
+  )) +
+  geom_alluvium(aes(fill = fltr_fasciotomy), width = 1/8, absolute = FALSE, lode.guidance = 'backward') +
+  geom_stratum(width = 1/8,
+               fill = "black",
+               color = "grey", absolute = FALSE) +
+  geom_label(stat = "stratum", infer.label = TRUE) +
+  scale_x_discrete(limits = c("Injury Description", "Fasciotomy"),
+                   expand = c(.05, .05)) +
+  scale_y_continuous(trans='log2') +
+  ggdark::dark_theme_classic() +
+  ggsci::scale_fill_jco(name = "Fasciotomy") +
+  labs(title = "Sankey Flow") +
+  theme(legend.position = "bottom",
+        axis.text.y = element_blank(), 
+        axis.title = element_blank(), 
+        axis.line = element_blank(), 
+        axis.ticks = element_blank()) 
+
 
 # plotly::ggplotly(sankey_graph)
 # 
