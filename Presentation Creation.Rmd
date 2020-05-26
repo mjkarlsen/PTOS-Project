@@ -1,5 +1,6 @@
 ---
-title: "Compartment Syndrome in Pediatric Patients"
+title: "Compartment Syndrome Complications "
+subtitle: "Pediatric Patients After Forearm Fracture Treatement"
 author: Matt Carlson
 date: May 24, 2020
 output: 
@@ -9,12 +10,28 @@ output:
 # Objective
 
 ## Objective
+- Identify the likelihood of <em> compartment syndrome </em> in pediatric patients (less than seventeen years old) who suffered from <em> forearm fractures </em>.
 
-- The objective is to identify the likelihood of acute compartment syndrome in pediatric patients (less than seventeen years old) who suffered from forearm fractures. 
-- I plan to study those who likely had more severe injuries or who had an unacceptable result from their treatment in the emergency department.  
+<div style="float: left; width: 45%;">
+
+Compartment Syndrome
+
+- Diagnosis that
+- Some Other thing
 - The majority of forearm fractures in children are treated with closed reduction and casting.  
 
-# Compartment Syndrome{.flexbox .vcenter}
+</div>
+
+<div style="float: right; width: 50%;">
+
+Forearm Fracture Treatment
+
+- Interesting Stuff
+- More Interesting Stuff
+
+</div>
+
+# Compartment Syndrome
 
 ## What is Compartment Syndrome?
 
@@ -45,15 +62,15 @@ output:
 </div>
 </div>
 
-# Pennsylvania Trauma Outcome System (PTOS) Data
 
 ## Fasciotomy Results in PTOS Data
 
-
 ![](images/gt_graph_1.png){width=1000px}
-<font size="3">
+
+<div style = "font-size: 18px">
+- Patients results between 2010 to 2015
 - PTOS contains 630 patients that had forearm surgery and complications from compartment syndrome 
-</font>
+</div>
 
 ## Fasciotomy Results 
 

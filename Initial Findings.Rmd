@@ -332,7 +332,7 @@ bar_func <- function(data, col){
     ggdark::dark_theme_classic() +
     ggsci::scale_fill_jco() +
     coord_flip() +
-    labs(title = toupper(expr_text(col)),
+    labs(title = janitor::make_clean_names(expr_text(col), case = "title"),
          y = "Count of Patients",
          x = NULL) +
     theme(axis.text.y=element_text(angle=0, hjust=1), legend.position = "none") +
@@ -667,6 +667,26 @@ sankey_graph
 # saveWidget(sankey_graph, file = "E:/Northwestern/12 - Capstone/Project/interactivesankey.html")
 
 ```
+
+
+```{r}
+patient_periods %>%
+  select.(sex, fltr_fasciotomy, total_stay_time, race, forearm_fx_desc, peds_adult_flag) %>% 
+  mutate(
+    total_stay_hr = as.numeric(total_stay_time, "hours"),
+    total_stay_hr = ifelse.(is.na(total_stay_hr), 0 , total_stay_hr), 
+    total_stay_bins = ntile(total_stay_hr, 2), 
+    forearm_procedure = case.(forearm_fx_desc %in% c('Open reduc-radius/uln fx', 
+                                                     'Op red-int fix rad/ulna' ), "Open", 
+                              default = "Closed")
+  ) %>%
+  # drop_na.() %>%
+  summarize.(freq = n.(),
+             by = c(fltr_fasciotomy, peds_adult_flag, total_stay_bins, forearm_procedure)) %>% 
+  pivot_wider.(names_from = fltr_fasciotomy, values_from = freq) %>% 
+  arrange.(peds_adult_flag, total_stay_bins, forearm_procedure)
+```
+
 
 
 ## Sankey Analysis
