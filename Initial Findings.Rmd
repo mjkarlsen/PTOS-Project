@@ -297,6 +297,137 @@ gt_graph_2 %>%
   
 ```
 
+```{r cs_vs_fasc}
+gt_graph_3 <- patient_df %>% 
+  filter.(fltr_procedure == T) %>% 
+  summarize.(cnt = n.(), by = c( fltr_complication, fltr_fasciotomy)) %>% 
+  mutate_across.(is.logical, as.factor) %>% 
+  mutate_across.(is.factor, ~(relevel(.x, "TRUE"))) %>% 
+  pivot_wider.(fltr_complication, cnt) %>% 
+  adorn_totals(where = c("row","col")) %>% 
+  # mutate_across.(is.numeric, ~.x /21299) %>% 
+  gt(rowname_col = 'fltr_fasciotomy') %>% 
+  cols_width(
+    vars('fltr_fasciotomy') ~ px(150), 
+    everything() ~ px(150)
+  ) %>% 
+  tab_header(
+    title = md("Compartment Syndrome Diagnosis Accuracy"),
+    subtitle = md("In the PTOS dataset")
+  ) %>% 
+  tab_spanner(
+    label = "Compartment Syndrome Diagnosis", 
+    columns = vars('TRUE', 'FALSE', Total)
+  ) %>% 
+  tab_stubhead(label = "Fasciotomy Procedure") %>% 
+  fmt_number(vars('TRUE', 'FALSE', 'Total'), 
+              decimals = 0) %>% 
+  tab_options(row.striping.include_table_body = TRUE) %>%
+  tab_style(
+    style = cell_borders(
+      sides = c("top", "bottom"),
+      color = "black",
+      weight = px(2.5),
+      style = "solid"
+    ),
+    locations = list(
+      cells_body(
+        columns = everything(),
+        rows = vars('Total')
+      )
+    )
+  ) %>% 
+  tab_style(
+    style = cell_borders(
+      sides = c("left", "right"),
+      color = "black",
+      weight = px(2.5),
+      style = "solid"
+    ),
+    locations = list(
+      cells_body(
+        columns = vars('Total'),
+        rows = everything()
+      )
+    )
+  ) %>% 
+    cols_align(align = "center")
+
+
+gt_graph_3
+
+gt_graph_3 %>% 
+  gtsave("gt_graph_3.png" , expand = 10,
+    path = paste0(getwd(),"/images/")
+  )
+  
+```
+
+
+```{r cs_vs_fasc}
+gt_graph_4 <- patient_df %>% 
+  filter.(fltr_procedure == T) %>% 
+  summarize.(cnt = n.(), by = c( peds_adult_flag, forearm_fx_desc)) %>% 
+  pivot_wider.(peds_adult_flag, cnt) %>% 
+  arrange.(-Adult) %>% 
+  adorn_totals(where = c("row","col")) %>% 
+  mutate_across.(is.numeric, ~.x/21299) %>% 
+  gt(rowname_col = 'forearm_fx_desc') %>% 
+  cols_width(
+    vars('forearm_fx_desc') ~ px(150), 
+    everything() ~ px(150)
+  ) %>% 
+  tab_header(
+    title = md("Forearm Fractures Treatments"),
+    subtitle = md("In the PTOS dataset")
+  ) %>% 
+  tab_spanner(
+    label = "Adults vs. Peds", 
+    columns = vars('Adult', 'Peds', Total)
+  ) %>% 
+  tab_stubhead(label = "Forearm Facture Treatments") %>% 
+  fmt_percent(everything(), 
+              decimals = 1) %>% 
+  tab_options(row.striping.include_table_body = TRUE) %>%
+  tab_style(
+    style = cell_borders(
+      sides = c("top", "bottom"),
+      color = "black",
+      weight = px(2.5),
+      style = "solid"
+    ),
+    locations = list(
+      cells_body(
+        columns = everything(),
+        rows = vars('Total')
+      )
+    )
+  ) %>% 
+  tab_style(
+    style = cell_borders(
+      sides = c("left", "right"),
+      color = "black",
+      weight = px(2.5),
+      style = "solid"
+    ),
+    locations = list(
+      cells_body(
+        columns = vars('Total'),
+        rows = everything()
+      )
+    )
+  ) %>%   
+  cols_align(align = "center")
+
+
+gt_graph_4
+
+gt_graph_4 %>% 
+  gtsave("gt_graph_4.png" , expand = 10,
+    path = paste0(getwd(),"/images/")
+  )
+  
+```
 
 
 ### Comparing Demograhics and Medical Procedures between Adults and Pediatric Patients 

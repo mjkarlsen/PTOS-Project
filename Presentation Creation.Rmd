@@ -1,45 +1,31 @@
 ---
-title: "Compartment Syndrome Complications "
-subtitle: "Pediatric Patients After Forearm Fracture Treatement"
+title: "Compartment Syndrome"
+subtitle: "In Pediatric Patients After Forearm Fracture Treatment"
 author: Matt Carlson
 date: May 24, 2020
 output: 
   ioslides_presentation:
     widescreen: true
 ---
-# Objective
 
-## Objective
-- Identify the likelihood of <em> compartment syndrome </em> in pediatric patients (less than seventeen years old) who suffered from <em> forearm fractures </em>.
-
-<div style="float: left; width: 45%;">
-
-Compartment Syndrome
-
-- Diagnosis that
-- Some Other thing
-- The majority of forearm fractures in children are treated with closed reduction and casting.  
-
-</div>
-
-<div style="float: right; width: 50%;">
-
-Forearm Fracture Treatment
-
-- Interesting Stuff
-- More Interesting Stuff
-
-</div>
-
-# Compartment Syndrome
+# Overview of Compartment Syndrome
 
 ## What is Compartment Syndrome?
 
-- Compartment syndrome refers to the increased pressure inside the section of the limb that contains muscles, nerves, and blood vessels. 
-- This increased pressure results in the reduction of blood supply and tissue necrosis. 
-- It usually develops in the lower leg and forearm after traumas like a bone fracture. If not treated in time, it can lead to permanent muscle and nerve damage.
 
-# When does Compartment Syndrome occur?
+<div style="float: left; width: 50%;">
+
+- Compartment syndrome refers to the <b>increased pressure</b> inside the section of the limb that contains muscles, nerves, and blood vessels. 
+- This increased pressure results in the reduction of blood supply and tissue necrosis. 
+- It usually develops in the lower leg and forearm after traumas like a bone fracture. 
+  - If not treated in time, it can lead to <b> permanent muscle and nerve damage. </b>
+
+</div>
+
+<div style="float: right; width: 45%;">
+
+![](images/compartment_syndrome_1.png)
+</div>
 
 ## When does Compartment Syndrome occur?
 - Compartment Syndrome typically develops after surgery or trauma, causing excessive fluid in the fascia, causing pressure and pain in the affected limb. 
@@ -49,18 +35,46 @@ Forearm Fracture Treatment
 ![](images/process_flow.png){width=1000px}
 </div>
 
-# How is Compartment Syndrome treated?
-
 ## How is Compartment Syndrome treated?
 
-<div class="rows-2">
+<div style="float: left; width: 60%;">
 
 - Treatment of compartment syndrome is a fasciotomy or removal of external compression, which can relieve the pressure and maintains blood flow to the muscle. 
 
-<div class="centered">
+</div>
+
+<div style="float: right; width: 40%;">
 ![](images/CS_1.png){width=350px}
 </div>
+
+
+# Overview of Forearm Factures
+
+## What are the four major types of Forearm Fracture Treatments?
+
+
+## Forearm Fracture Results
+
+<div style="float: left; width: 60%;">
+![](images/gt_graph_4.png){width=600px}
 </div>
+
+<div style="float: right; width: 35%; font-size: 18px">
+- Higher percentage of patients need a fasciotomy when forearm surgery requires open incision
+- Another bullet point
+- One more for good luck
+
+# Objective
+
+## Objective
+Identify the likelihood of <em> compartment syndrome </em> in pediatric patients (less than seventeen years old) who suffered from <em> forearm fractures </em>.
+
+<strong> Challenges with Data </strong>
+
+- Compartment Syndrome diagnosis is typically not accurate or reliable
+  - Models will focus on predicting Fasciotomy 
+- Forearm Fractures does not contain details to distinguish between right or left arms 
+  - Duplicate codes for forearm factures will be removed and counted once
 
 
 ## Fasciotomy Results in PTOS Data
