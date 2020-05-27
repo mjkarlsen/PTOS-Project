@@ -1,0 +1,229 @@
+---
+title: "Predicting Fasciotomy"
+output: html_notebook
+---
+
+```{r}
+pacman::p_load(caret, 
+               caretEnsemble, 
+               doParallel)
+```
+
+
+
+```{r creating_upsample_model}
+patient_list <- patient_periods %>%
+  filter.(
+    fltr_procedure == T,
+    sex != "U"
+    # peds_adult_flag == "Peds"
+  ) %>%
+  select.(
+    id,
+    fltr_fasciotomy,
+    peds_adult_flag,
+    fltr_procedure,
+    sex,
+    race,
+    age_in_yrs,
+    injury_desc,
+    patient_county,
+    cause_of_injury_e_code
+  ) %>%
+  distinct.()
+
+
+fx_proc_df <- trans_full_df %>%
+  filter.(data_source %in% c(
+    "diagnosis",
+    "procedure",
+    "complication"
+  )) %>%
+  mutate.(data_source = fct_relevel(data_source, c(
+    "diagnosis",
+    "procedure",
+    "complication"
+  ))) %>%
+  inner_join.(patient_list, by = "id") %>%
+  arrange.(id, date, data_source, time) %>%
+  mutate.(index = seq_len(.N), by = id) %>%
+  mutate.(fltr_fasciotomy = as_factor(fltr_fasciotomy)) %>%
+  select.(index, id, everything.())
+
+fx_proc_df <- fx_proc_df %>%
+  filter.(
+    chapter_desc != "Extremity Compartment Syndrome (not present on admission)",
+    code_cd != "83.14"
+  ) %>%
+  select.(
+    id,
+    index,
+    fltr_fasciotomy,
+    code_desc,
+    subchapter_desc,
+    sex,
+    race,
+    injury_desc,
+    age_in_yrs,
+    cause_of_injury_e_code
+  ) %>%
+  as_tibble() %>%
+  na.omit()
+
+```
+
+## Upsample Data
+
+```{r randomforest_model}
+
+set.seed(123)
+train_test_split <- rsample::initial_split(data = fx_proc_df, 
+                                           strata = fltr_fasciotomy)
+
+
+train_df <- train_test_split %>% training() 
+test_df  <- train_test_split %>% testing()
+
+
+
+data_balanced_over <- ovun.sample(fltr_fasciotomy ~ . -id -index,
+                                  data = train_df,
+                                  method = "both",
+                                  p = 0.5,
+                                  N = 5000,
+                                  seed = 123)$data
+
+# table(data_balanced_over$fltr_fasciotomy)
+
+rf_recipe <- 
+  recipe(fltr_fasciotomy ~ ., data = data_balanced_over) %>%
+  update_role(fltr_fasciotomy, new_role = "outcome") %>% 
+  update_role(id, index, new_role = "ID COL") %>% 
+  step_other(all_predictors(), -id, threshold = 0.001) %>%
+  # step_unknown(all_nominal()) %>% 
+  step_dummy(all_predictors(), -all_outcomes(), -id) %>% 
+  step_zv(all_nominal()) %>% 
+  step_naomit(all_predictors()) 
+
+
+train_data <- prep(rf_recipe) %>% juice()
+
+test_data <- prep(rf_recipe) %>% bake(test_df)
+
+```
+
+```{r}
+train_data %>% 
+  summarize.(cnt = n.(), by = fltr_fasciotomy)
+
+```
+
+
+
+```{r}
+
+
+registerDoParallel(6)
+
+getDoParWorkers()
+
+set.seed(123)
+
+my_control <- trainControl(method = 'cv', # for 'cross-validation'
+                           number = 3, # number of k-folds
+                           savePredictions = 'final',
+                           allowParallel = TRUE)
+
+
+set.seed(222)
+
+model_list <- caretList(fltr_fasciotomy ~ .,
+                        data = train_data, 
+                        trControl = my_control,
+                        methodList = c('rf'),
+                        tuneList = NULL,
+                        continue_on_fail = FALSE)
+
+
+# stopImplicitCluster()
+```
+
+```{r}
+resamples <- resamples(model_list)
+
+dotplot(resamples, metric = 'RMSE')
+
+set.seed(222)
+ensemble_1 <- caretEnsemble(model_list, 
+                            metric = 'RMSE', 
+                            trControl = my_control)
+summary(ensemble_1)
+
+
+plot(ensemble_1)
+
+```
+
+
+```{r}
+set.seed(222)
+
+ensemble_2 <- caretStack(model_list, 
+                         method = 'glmnet', 
+                         metric = 'RMSE', 
+                         trControl = my_control)print(ensemble_2)
+```
+
+
+
+## Build some model
+
+```{r}
+
+# prepare training scheme
+control <- trainControl(method="repeatedcv", number=10, repeats=3)
+# CART
+set.seed(7)
+fit.cart <- train(fltr_fasciotomy~., data=train_data, method="rpart", trControl=control)
+# LDA
+set.seed(7)
+fit.lda <- train(fltr_fasciotomy~., data=train_data, method="lda", trControl=control)
+# SVM
+set.seed(7)
+fit.svm <- train(fltr_fasciotomy~., data=train_data, method="svmRadial", trControl=control)
+# kNN
+set.seed(7)
+fit.knn <- train(fltr_fasciotomy~., data=train_data, method="knn", trControl=control)
+# Random Forest
+set.seed(7)
+fit.rf <- train(fltr_fasciotomy~., data=train_data, method="rf", trControl=control)
+# collect resamples
+results <- resamples(list(CART=fit.cart, LDA=fit.lda, SVM=fit.svm, KNN=fit.knn, RF=fit.rf))
+
+
+
+```
+
+
+## Compare Multiple Models
+
+```{r}
+ 	
+# summarize differences between modes
+summary(results)
+```
+
+
+```{r}
+# box and whisker plots to compare models
+scales <- list(x=list(relation="free"), y=list(relation="free"))
+bwplot(results, scales=scales)
+```
+
+
+```{r}
+# dot plots of accuracy
+scales <- list(x=list(relation="free"), y=list(relation="free"))
+dotplot(results, scales=scales)
+```
+
