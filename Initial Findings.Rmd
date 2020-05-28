@@ -436,7 +436,6 @@ gt_graph_4 %>%
 
 patient_df_list <- list('sex',
                         'race',
-                        'fall_height',
                         'primary_injury_type',
                         'injury_desc', 
                         'place_of_injury', 
@@ -461,7 +460,7 @@ bar_func <- function(data, col){
     geom_bar(position = "dodge", stat = "identity") +
     geom_text(hjust = 'left', y = 0)+
     ggdark::dark_theme_classic() +
-    ggsci::scale_fill_jco() +
+    # ggsci::scale_fill_jco() +
     coord_flip() +
     labs(title = janitor::make_clean_names(expr_text(col), case = "title"),
          y = "Count of Patients",
@@ -493,6 +492,17 @@ map.(patient_df_list, ~ bar_func(patient_df, .x))
 
 
 ```
+
+```{r}
+patient_df %>% 
+  filter.(fltr_fasciotomy == T) %>% 
+  summarize.(cnt = n.(), by = forearm_fx_desc) %>% 
+  arrange.(-cnt)
+```
+
+
+
+
 
 # Predicting Compartment Syndrome Complications
 
