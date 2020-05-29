@@ -67,6 +67,7 @@ fx_proc_df <- fx_proc_df %>%
     code_cd != "83.14"
   ) %>%
   select.(
+    id,
     fltr_fasciotomy,
     code_desc,
     subchapter_desc,
@@ -92,33 +93,49 @@ fx_proc_df <- fx_proc_df %>%
 
 set.seed(123)
 train_test_split <- rsample::initial_split(data = fx_proc_df, 
-                                           strata = fltr_fasciotomy)
+                                           strata = fltr_fasciotomy, 
+                                           prop = 1/2)
 
 
 train_df <- train_test_split %>% training() 
 test_df  <- train_test_split %>% testing()
 
 
+train_df %>% summarise.(cnt = n.())
+test_df %>% summarise.(cnt = n.())
 
 data_balanced_over <- ovun.sample(fltr_fasciotomy ~ .,  #-id -index,
                                   data = train_df,
                                   method = "both",
                                   p = 0.5,
-                                  N = 10000,
+                                  N = 20000,
                                   seed = 123)$data
 
 rf_recipe <- 
-  recipe(fltr_fasciotomy ~ ., data = data_balanced_over) %>%
+  recipe(fltr_fasciotomy ~ ., -id, data = data_balanced_over) %>%
   update_role(fltr_fasciotomy, new_role = "outcome") %>% 
-  step_other(all_predictors(), threshold = 0.001) %>%
-  # step_dummy(all_predictors(), -all_outcomes()) %>% 
-  step_zv(all_nominal()) %>% 
+  update_role(id, new_role = "ID") %>% 
+  step_other(all_predictors(), -id, threshold = 0.001) %>%
+  step_dummy(all_predictors(), -all_outcomes(), -id) %>%
+  step_zv(all_nominal(), -id) %>% 
   step_naomit(all_predictors()) 
   
 
 train_data <- prep(rf_recipe) %>% juice() 
 
-test_data <- prep(rf_recipe) %>% bake( test_df)
+test_data <- prep(rf_recipe) %>% bake(test_df) %>% na.omit()
+
+full_data <- prep(rf_recipe) %>% bake(fx_proc_df)
+
+
+train_data %>% 
+  summarize.(cnt = n.(), by = fltr_fasciotomy)
+
+
+test_data %>% 
+  summarize.(cnt = n.(), by = fltr_fasciotomy)
+
+
 
 ```
 
@@ -129,7 +146,7 @@ test_data <- prep(rf_recipe) %>% bake( test_df)
 rf_model <- rand_forest() %>%
   set_mode("classification") %>%
   set_engine("ranger", verbose = TRUE, importance = "impurity", num.threads = 6) %>%
-  fit(fltr_fasciotomy ~ ., data = train_data)
+  fit(fltr_fasciotomy ~ . -id, data = train_data)
 
 # XGBoost on important words only
 xgb_model <- boost_tree(mtry = .7,
@@ -140,36 +157,36 @@ xgb_model <- boost_tree(mtry = .7,
                         sample_size = 1) %>%
   set_mode("classification") %>%
   set_engine("xgboost", nthread = 6) %>%
-  fit(fltr_fasciotomy ~ ., data = train_data)
+  fit(fltr_fasciotomy ~ . -id, data = train_data)
 
-## LOGISTIC REGRESSION
-glm_model <-
-  logistic_reg(mode = "classification") %>%
-  set_engine("glm") %>%
-  fit(fltr_fasciotomy ~ ., data = train_data)
-
-## NEURAL NETWORK
-set.seed(579)
-nnet_model <- mlp(epochs = 100, hidden_units = 5, dropout = 0.1) %>%
-  set_mode("classification") %>% 
-  # Also set engine-specific `verbose` argument to prevent logging the results: 
-  set_engine("keras", verbose = 0) %>%
-  fit(fltr_fasciotomy ~ ., data = train_data)
-
-## RIDGE
-ridge_model <- logistic_reg(penalty = tune(), mixture = tune()) %>% # Specify hyperparameters to "tune"
-  set_engine("glmnet")
-
-best_parameters <- ridge_model %>%
-  tune_grid(fltr_fasciotomy ~ .,
-            resamples = vfold_cv(train_data, 5), # Specify folds
-            grid = expand_grid(penalty = c(0, .1, 1, 10, 1000), # Specify grid to tune
-                               mixture = c(0, .2, .4, .8))) %>%
-  select_best(metric = "roc_auc") # Extract best parameters based on a metric
-
-ridge_model <- ridge_model %>%
-  finalize_model(best_parameters) %>% # Update model with best parameters
-  fit(fltr_fasciotomy ~ ., data = train_data) # Fit model using best parameters
+# ## LOGISTIC REGRESSION
+# glm_model <-
+#   logistic_reg(mode = "classification") %>%
+#   set_engine("glm") %>%
+#   fit(fltr_fasciotomy ~ ., data = train_data)
+# 
+# ## NEURAL NETWORK
+# set.seed(579)
+# nnet_model <- mlp(epochs = 100, hidden_units = 5, dropout = 0.1) %>%
+#   set_mode("classification") %>% 
+#   # Also set engine-specific `verbose` argument to prevent logging the results: 
+#   set_engine("keras", verbose = 0) %>%
+#   fit(fltr_fasciotomy ~ ., data = train_data)
+# 
+# ## RIDGE
+# ridge_model <- logistic_reg(penalty = tune(), mixture = tune()) %>% # Specify hyperparameters to "tune"
+#   set_engine("glmnet")
+# 
+# best_parameters <- ridge_model %>%
+#   tune_grid(fltr_fasciotomy ~ .,
+#             resamples = vfold_cv(train_data, 5), # Specify folds
+#             grid = expand_grid(penalty = c(0, .1, 1, 10, 1000), # Specify grid to tune
+#                                mixture = c(0, .2, .4, .8))) %>%
+#   select_best(metric = "roc_auc") # Extract best parameters based on a metric
+# 
+# ridge_model <- ridge_model %>%
+#   finalize_model(best_parameters) %>% # Update model with best parameters
+#   fit(fltr_fasciotomy ~ ., data = train_data) # Fit model using best parameters
 
 
 ```
@@ -210,20 +227,20 @@ for(d in mods) {
 train_pred_df <- train_data %>% 
   select(fltr_fasciotomy) %>%
   bind_cols(predict(rf_model, train_data) %>% rename(rf = .pred_class),
-            predict(xgb_model, train_data) %>% rename(xgb = .pred_class), 
-            predict(glm_model, train_data) %>% rename(glm = .pred_class),
-            predict(nnet_model, train_data) %>% rename(nnet = .pred_class),
-            predict(ridge_model, train_data) %>% rename(ridge = .pred_class)
+            predict(xgb_model, train_data) %>% rename(xgb = .pred_class)
+            # predict(glm_model, train_data) %>% rename(glm = .pred_class),
+            # predict(nnet_model, train_data) %>% rename(nnet = .pred_class),
+            # predict(ridge_model, train_data) %>% rename(ridge = .pred_class)
             )
 
 # Get predictions
 test_pred_df <- test_data %>%
   select(fltr_fasciotomy) %>%
   bind_cols(predict(rf_model, test_data) %>% rename(rf = .pred_class),
-            predict(xgb_model, test_data) %>% rename(xgb = .pred_class), 
-            predict(glm_model, test_data) %>% rename(glm = .pred_class),
-            predict(nnet_model, test_data) %>% rename(nnet = .pred_class),
-            predict(ridge_model, test_data) %>% rename(ridge = .pred_class)
+            predict(xgb_model, test_data) %>% rename(xgb = .pred_class)
+            # predict(glm_model, test_data) %>% rename(glm = .pred_class),
+            # predict(nnet_model, test_data) %>% rename(nnet = .pred_class),
+            # predict(ridge_model, test_data) %>% rename(ridge = .pred_class)
             )
 
 
@@ -260,6 +277,60 @@ test_pred_df %>%
 ```
 
 ```{r}
+
+rf_pred <- 
+  predict(rf_model, full_data, type = "prob") %>% 
+  bind_cols(full_data %>% select(id, fltr_fasciotomy)) %>% 
+  distinct()
+
+rf_model_results <- rf_pred %>% 
+  select(id, .pred_FALSE, .pred_TRUE, fltr_fasciotomy) %>% 
+  summarize.(pred_false = mean(.pred_FALSE), 
+            pred_true = mean(.pred_TRUE), 
+            by = c(id, fltr_fasciotomy)) %>% 
+  arrange(-pred_true)
+
+
+
+patient_rf <- rf_model_results %>% 
+  inner_join.(patient_df %>% 
+                select(id, 
+                       sex, 
+                       race, 
+                       forearm_fx_desc, 
+                       age_in_yrs, 
+                       cause_of_injury_e_code, 
+                       place_of_injury
+                       ), by = "id")
+
+pat_age <- 33
+
+patient_rf %>% 
+  filter(forearm_fx_desc  == 'Op red-int fix rad/ulna',
+         sex == 'MALE',
+         race == 'White',
+         between(age_in_yrs , pat_age - 1, pat_age + 1), 
+         # cause_of_injury_e_code == 'Oth MVA N-traffic Collision,Move Object - Motorcyclist', 
+          place_of_injury == 'Home'
+         ) %>% 
+  summarise(CS = mean(pred_true), 
+             No_CS = 1-CS)  %>% 
+  pivot_longer(everything()) %>% 
+  ggplot(aes(x = name, 
+             y = value, 
+             label = value)) +
+  geom_bar(position = "dodge", stat = "identity") +
+  geom_text(hjust = 'left', y = 0)
+
+
+
+```
+
+
+
+
+
+```{r}
 # Find important words
 importance_df <- rf_model$fit$variable.importance %>%
   enframe(name = "variable", value = "importance") %>%
@@ -274,21 +345,28 @@ variable_list <- importance_df %>%
   pull(variable)
 
 
-my_df <- tibble( cause_of_injury_e_code = "Oth MVA Traffic, Highway Collision - Driver of MV, Non MC", 
-                 age_grp = '2',
-                 code_desc = "Op red-int fix rad/ulna",
-                 subchapter_desc = "Reduction of fracture and dislocation",
-                 place_of_injury = "Home",
-                 sex = "MALE", 
-                 race = "White",
-                 admission_gcs_eye  = "None", 
-                 admission_gcs_motor = "None", 
-                 admission_gcs_verbal = "None", 
-                 )
 
-my_df
+    
 
-predict(rf_model, my_df, type = "prob")
+my_df <- tibble(id = '00000000000000',
+                fltr_fasciotomy = 'TRUE',
+                code_desc  = 'Oth MVA N-traffic Collision,Move Object - Motorcyclist',
+                subchapter_desc = 'Reduction of fracture and dislocation',
+                sex = 'Female',
+                race = 'White',
+                age_in_yrs = 30, 
+                cause_of_injury_e_code = 'Oth MVA N-traffic Collision,Move Object - Motorcyclist', 
+                place_of_injury = 'Home'
+)
+  
+
+prepped_df <- prep(rf_recipe) %>% bake( my_df)
+
+results <- predict(rf_model, my_df, type = "prob")
+
+results
+
+
 
 ```
 ```{r}
@@ -299,7 +377,7 @@ list
 
 
 ```{r fig.height=10}
-vip::vip(xgb_model$fit,num_features = 15)
+vip::vip(rf_model$fit,num_features = 15)
 
 
 xgb_model
