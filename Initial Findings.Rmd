@@ -49,7 +49,7 @@ knitr::opts_chunk$set(echo = FALSE, warning = FALSE)
 
 knitr::knit_global()
 
-dfs<- list("patient_df", "patient_periods",  "ptos_df",  "trans_flat_df" , "trans_full_df")
+dfs<- list("patient_df", "patient_periods",  "trans_flat_df" , "trans_full_df")
 file_path <- 'E:/Northwestern/12 - Capstone/PTOS_Data/'
 
 

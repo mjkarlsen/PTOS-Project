@@ -33,12 +33,12 @@ patient_list <- patient_periods %>%
     cause_of_injury_e_code, 
     place_of_injury
   ) %>%
-  distinct.()
+  distinct()
 
 
 patient_list <- patient_list %>% 
   left_join.(patient_df, by = "id") %>%
-  distinct.()
+  distinct()
 
 
 fx_proc_df <- trans_full_df %>%
@@ -136,13 +136,13 @@ test_data %>%
   summarize.(cnt = n.(), by = fltr_fasciotomy)
 
 
-# 
-# dfs<- list("full_data")
-# file_path <- 'E:/Northwestern/12 - Capstone/PTOS_Data/'
-# 
-# for(d in dfs) {
-#     save(list=d, file=paste0(file_path,d, ".RData"))
-# }
+
+dfs<- list("full_data")
+file_path <- 'E:/Northwestern/12 - Capstone/PTOS_Data/'
+
+for(d in dfs) {
+    save(list=d, file=paste0(file_path,d, ".RData"))
+}
 
 
 ```
@@ -202,26 +202,9 @@ xgb_model <- boost_tree(mtry = .7,
 ```{r save_model_outputs}
 
 
-mods<- list("rf_model", "xgb_model",  "glm_model",  "nnet_model", "ridge_model" )
-file_path <- 'E:/Northwestern/12 - Capstone/PTOS_Data/'
-
-for(d in mods) {
-    saveRDS(d, file=paste0(file_path,d, ".rds"))
-}
-
-
-
-mods<- list("rf_model", "xgb_model",  "glm_model",  "nnet_model", "ridge_model" )
-file_path <- 'E:/Northwestern/12 - Capstone/PTOS_Data/'
-
-for(d in mods) {
-  if (exists(d)) next(d) 
-  else readRDS(file = paste0(file_path,d, ".rds"))
-}
-
-#_Big.rds
-#_20k.rds
-
+# save the model to disk
+saveRDS(rf_model, "E:/Northwestern/12 - Capstone/PTOS_Data/rf_model.rds")
+saveRDS(xgb_model, "E:/Northwestern/12 - Capstone/PTOS_Data/xgb_model.rds")
 
 ```
 
@@ -284,57 +267,44 @@ test_pred_df %>%
   arrange(f_score)
 ```
 
+# Results from Shiny Application
+
 ```{r}
 
-rf_pred <- 
-  predict(rf_model, full_data, type = "prob") %>% 
-  bind_cols(full_data %>% select(id, fltr_fasciotomy)) %>% 
-  distinct()
+rf_pred <-
+    predict(rf_model, full_data, type = "prob") %>%
+    bind_cols(full_data %>% select(id, fltr_fasciotomy)) %>%
+    distinct()
 
-rf_model_results <- rf_pred %>% 
-  select(id, .pred_FALSE, .pred_TRUE, fltr_fasciotomy) %>% 
-  summarize.(pred_false = mean(.pred_FALSE), 
-            pred_true = mean(.pred_TRUE), 
-            by = c(id, fltr_fasciotomy)) %>% 
-  arrange(-pred_true)
-
-
-
-patient_rf <- rf_model_results %>% 
-  inner_join.(patient_df %>% 
-                select(id, 
-                       sex, 
-                       race, 
-                       forearm_fx_desc, 
-                       age_in_yrs, 
-                       cause_of_injury_e_code, 
-                       place_of_injury
-                       ), by = "id")
-
-pat_age <- 33
-
-patient_rf %>% 
-  filter(forearm_fx_desc  == 'Op red-int fix rad/ulna',
-         sex == 'MALE',
-         race == 'White',
-         between(age_in_yrs , pat_age - 1, pat_age + 1), 
-         # cause_of_injury_e_code == 'Oth MVA N-traffic Collision,Move Object - Motorcyclist', 
-          place_of_injury == 'Home'
-         ) %>% 
-  summarise(CS = mean(pred_true), 
-             No_CS = 1-CS)  %>% 
-  pivot_longer(everything()) %>% 
-  ggplot(aes(x = name, 
-             y = value, 
-             label = value)) +
-  geom_bar(position = "dodge", stat = "identity") +
-  geom_text(hjust = 'left', y = 0)
+rf_model_results <- rf_pred %>%
+    select(id, .pred_FALSE, .pred_TRUE, fltr_fasciotomy) %>%
+    summarize.(pred_false = mean(.pred_FALSE),
+               pred_true = mean(.pred_TRUE),
+               by = c(id, fltr_fasciotomy)) %>%
+    arrange(-pred_true)
 
 
+
+patient_rf <- rf_model_results %>%
+    inner_join.(patient_df %>%
+                    select(id,
+                           sex,
+                           race,
+                           forearm_fx_desc,
+                           age_in_yrs,
+                           injury_desc,
+                           place_of_injury
+                    ), by = "id")
+
+
+dfs<- list("patient_rf")
+file_path <- 'E:/Northwestern/12 - Capstone/Project/CS_App2/'
+
+for(d in dfs) {
+    save(list=d, file=paste0(file_path,d, ".RData"))
+}
 
 ```
-
-
 
 
 
