@@ -27,27 +27,13 @@ library(plotly)
 # Create lists for user selections based off of the 
 # PTOS data results
 
-create_lists <- function(.df, .col){
-    
-    .col <- enexpr(.col)
-    
-    return_list <- .df %>% 
-        filter(fltr_procedure == T) %>% 
-        select(!!.col) %>%
-        arrange(!!.col) %>% 
-        distinct() %>% 
-        pull()
-}
-
-injury_list <- patient_df %>% filter(fltr_procedure == T) %>% create_lists(injury_desc)
-injury_loc_list <- patient_df %>% filter(fltr_procedure == T) %>%  create_lists(place_of_injury) 
-
 
 patient_results <- patient_df %>% 
     filter(fltr_procedure == T)
 
 # Bring in randomforest model
 readRDS(file = "E:/Northwestern/12 - Capstone/PTOS_Data/rf_model.rds")
+load(file = "E:/Northwestern/12 - Capstone/PTOS_Data/full_data.RData")
 
 
 rf_pred <- 
@@ -81,44 +67,38 @@ patient_rf <- rf_model_results %>%
 
 
 ui <- dashboardPage(
+    
+
     dashboardHeader(
         title = "Compartment Syndrome Prediction Dashboard",
         titleWidth = 400),
     
     dashboardSidebar(
-        numericInput(inputId = "age",
-                     label = "Age of Patient",
-                     min = 1,
-                     max = 105,
-                     value = 30),
+        sliderInput("age_range", 
+                    "Select Age Range", 
+                    min = 0, max = 105, value = c(25,35)), 
         
         selectInput(inputId = "sex", 
-                    label = "Gender",
-                    choices = list("MALE", 
-                                   "FEMALE"), 
+                    label = "Select Patient's Gender",
+                    choices = list("MALE", "FEMALE"), 
                     selected = "MALE"),
         
         selectInput(inputId = "race", 
-                    label = "Race",
-                    choices = list('White', 
-                                   'Black',
-                                   'Asian', 
-                                   'Other/NFS', 
-                                   'Unknown')), 
+                    label = "Select Patient's Race",
+                    choices = NULL), 
         
+        selectInput(inputId = "injury_loc",
+                    label = "Injury Location",
+                    choices = NULL), 
+        
+        selectInput(inputId = "injury_desc",
+                    label = "Injury Description",
+                    choices = NULL), 
+
         selectInput(inputId = "forearm_fx_desc", 
                     label ="Forearm Fracture Description",
-                    choices = list("Op red-int fix rad/ulna", 
-                                   "Cl fx reduc-radius/ulna", 
-                                   "Cl red-int fix rad/ulna" ,
-                                   "Open reduc-radius/uln fx" )) 
-        # selectInput(inputId = "injury_desc",
-        #             label = "Injury Description",
-        #             choices = injury_list), 
-        # 
-        # selectInput(inputId = "injury_loc",
-        #             label = "Injury Location",
-        #             choices = injury_loc_list)
+                    choices = NULL) 
+
 
     ),
     dashboardBody(
@@ -155,18 +135,72 @@ ui <- dashboardPage(
 # Define server logic required to draw a histogram
 server <- function(input, output, session) {
     
-    output$selected_var <- renderText({
-        paste("You have selected the following:", 
-              input$sex, ",",
-              input$race,  ",",
-              input$age
-              )
+    #--------------------------------------------------
+    # UPDATE USER SELECTION OPTIONS 
+    #--------------------------------------------------
+    
+    observe({
+        gender_update <- patient_results %>% 
+            filter(between(age_in_yrs , input$age_range[1],  input$age_range[2]), 
+                   sex == input$sex) %>% 
+            select(race) %>% 
+            arrange(race) %>% 
+            distinct() %>% 
+            pull()
+        updateSelectInput(session, "race", "Select Patient's Race", choices = gender_update)
+        
+    })
+    
+    observe({
+        loc_update <- patient_results %>%
+            filter(between(age_in_yrs , input$age_range[1],  input$age_range[2]),
+                   sex == input$sex,
+                   race == input$race) %>%
+            select(place_of_injury) %>%
+            arrange(place_of_injury) %>%
+            distinct() %>%
+            pull()
+        updateSelectInput(session, "injury_loc", "Injury Location", choices = loc_update)
+        
+    })
+    
+    observe({
+        injury_update <- patient_results %>%
+            filter(between(age_in_yrs , input$age_range[1],  input$age_range[2]),
+                   sex == input$sex,
+                   race == input$race, 
+                   place_of_injury == input$injury_loc) %>%
+            select(injury_desc) %>%
+            arrange(injury_desc) %>%
+            distinct() %>%
+            pull()
+        updateSelectInput(session, "injury_desc", "Injury Description", choices = injury_update)
+
+    })
+    
+    observe({
+        fx_update <- patient_results %>% 
+            filter(between(age_in_yrs , input$age_range[1],  input$age_range[2]), 
+                   sex == input$sex, 
+                   race == input$race, 
+                   place_of_injury == input$injury_loc, 
+                   injury_desc == input$injury_desc) %>% 
+            select(forearm_fx_desc) %>% 
+            arrange(forearm_fx_desc) %>% 
+            distinct() %>% 
+            pull()
+        updateSelectInput(session, "forearm_fx_desc", "Forearm Fracture Description", choices = fx_update)
+        
     })
     
 
+    #--------------------------------------------------
+    # UPDATING DATA FOR VISUALIZATIONS
+    #--------------------------------------------------
+    
     pred_data <- reactive({
        res <-  patient_rf %>% 
-            filter(between(age_in_yrs , local(input$age) - 1, local(input$age) + 1) ,
+            filter(between(age_in_yrs , local(input$age_range[1]),  local(input$age_range[2])) ,
                    forearm_fx_desc == local(input$forearm_fx_desc),
                    # place_of_injury == local(input$injury_loc),
                    sex == local(input$sex),
@@ -184,8 +218,7 @@ server <- function(input, output, session) {
     base_table <- reactive({
         res <- patient_results %>% 
             filter(sex == local(input$sex), 
-                   age_in_yrs == local(input$age),
-                   between(age_in_yrs, local(input$age)-1, local(input$age)+1), 
+                   between(age_in_yrs , local(input$age_range[1]),  local(input$age_range[2])) ,
                    race == local(input$race), 
                    forearm_fx_desc == local(input$forearm_fx_desc)) 
         res
@@ -212,7 +245,7 @@ server <- function(input, output, session) {
     patients_like_you <- reactive({
         res <- patient_results %>%
             filter(sex == local(input$sex), 
-                   age_in_yrs == local(input$age), 
+                   between(age_in_yrs , local(input$age_range[1]),  local(input$age_range[2])) , 
                    race == local(input$race), 
                    forearm_fx_desc == local(input$forearm_fx_desc)) 
         res
@@ -233,7 +266,7 @@ server <- function(input, output, session) {
     patients_getting_cs <- reactive({
         res <- patient_results %>%
             filter(sex == local(input$sex), 
-                   age_in_yrs == local(input$age), 
+                   between(age_in_yrs , local(input$age_range[1]),  local(input$age_range[2])) , 
                    race == local(input$race), 
                    forearm_fx_desc == local(input$forearm_fx_desc), 
                    fltr_fasciotomy == T) 

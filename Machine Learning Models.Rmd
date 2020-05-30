@@ -136,6 +136,14 @@ test_data %>%
   summarize.(cnt = n.(), by = fltr_fasciotomy)
 
 
+# 
+# dfs<- list("full_data")
+# file_path <- 'E:/Northwestern/12 - Capstone/PTOS_Data/'
+# 
+# for(d in dfs) {
+#     save(list=d, file=paste0(file_path,d, ".RData"))
+# }
+
 
 ```
 
