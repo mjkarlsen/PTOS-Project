@@ -1,6 +1,7 @@
 
 library(shiny)
 library(shinydashboard)
+library(shinyWidgets)
 library(DT)
 library(r2d3)
 library(plotly)
@@ -23,25 +24,26 @@ ui <- dashboardPage(
         titleWidth = 400),
     
     dashboardSidebar(
-        helpText("Create demographic maps with 
-               information from the 2010 US Census."),
+        helpText("Enter Patient's Information to calculate the probability of suffering from Compartment Syndrome"),
         sliderInput("age_range", 
                     "Select Age Range", 
-                    min = 0, max = 105, value = c(25,35)), 
+                    min = 0, max = 105, value = c(25,35)),
         
-        selectInput(inputId = "sex", 
+        pickerInput(inputId = "sex", 
                     label = "Select Patient's Gender",
                     choices = list("MALE", "FEMALE"), 
-                    selected = "MALE", 
-                    multiple = TRUE),
+                    multiple = TRUE, 
+                    selected = "MALE",
+                    options = list(`actions-box` = TRUE)),
         
-        selectInput(inputId = "race", 
+        pickerInput(inputId = "race", 
                     label = "Select Patient's Race",
                     choices = list('White', 'Black', 'Asian', 'Other/NFS', "Unknown" ), 
                     multiple = TRUE, 
-                    selected = "White"), 
+                    selected = "White", 
+                    options = list(`actions-box` = TRUE)), 
         
-        selectInput(inputId = "injury_loc",
+        pickerInput(inputId = "injury_loc",
                     label = "Injury Location",
                     choices = list('Farm',
                                    'Home',
@@ -55,9 +57,10 @@ ui <- dashboardPage(
                                    'Unknown',
                                    'Unspecified'), 
                     multiple = TRUE, 
-                    selected = 'Street/Highway' ), 
+                    selected = 'Street/Highway', 
+                    options = list(`actions-box` = TRUE)), 
         
-        selectInput(inputId = "injury_desc",
+        pickerInput(inputId = "injury_desc",
                     label = "Injury Description",
                     choices = list('Accidental Falls',
                                    'Accidents Caused By Fire And Flames',
@@ -77,24 +80,44 @@ ui <- dashboardPage(
                                    'Water Transport Accidents'), 
                     multiple = TRUE, 
                     selected = c('Motor Vehicle Nontraffic Accidents',
-                                 'Motor Vehicle Traffic Accidents')), 
+                                 'Motor Vehicle Traffic Accidents'), 
+                    options = list(`actions-box` = TRUE)), 
 
-        selectInput(inputId = "forearm_fx_desc", 
+        pickerInput(inputId = "forearm_fx_desc", 
                     label ="Forearm Fracture Description",
                     choices = list('Op red-int fix rad/ulna', 
                                    'Open reduc-radius/uln fx', 
                                    'Cl red-int fix rad/ulna', 
                                    'Cl fx reduc-radius/ulna'), 
                     multiple = TRUE, 
-                    selected = 'Op red-int fix rad/ulna') 
-
+                    selected = 'Op red-int fix rad/ulna', 
+                    options = list(`actions-box` = TRUE)) , 
+         
+        
+        
+        fluidRow( align = "center",
+                  br(),
+                  h4("Prepared Filters"),
+                  shinyjs::useShinyjs(),
+                  actionButton("all_pats", "All Patients", width = "175px", 
+                               style="color: #fff; background-color: #99CC00; border-color: #2e6da4"), 
+                  actionButton("adult_pats", "Adult Patients", width = "175px", 
+                               style="color: #fff; background-color: #999999; border-color: #2e6da4"), 
+                  actionButton("peds_pats", "Pediatric Patients", width = "175px", 
+                               style="color: #fff; background-color: #999999; border-color: #2e6da4"),
+                  actionButton("high_risk", "Highest Risk Patients", 
+                               width = "175px", 
+                               style="color: #fff; background-color: #FF0000; border-color: #2e6da4"), 
+                  actionButton("low_risk", "Lowest Risk Patients", width = "175px", 
+                               style="color: #fff; background-color: #3399FF; border-color: #2e6da4"), 
+                  )
 
     ),
     dashboardBody(
         tabsetPanel(
             id = "tabs",
             tabPanel(
-                title = "Main Dashboard",
+                title = "Overview",
                 value = "page1",
                 fluidRow(
                     valueBoxOutput("total_patients"),
@@ -115,7 +138,8 @@ ui <- dashboardPage(
                             d3Output("cs_plot")
                     )
                 ),
-                fluidRow(textOutput("selected_var")),
+                fluidRow(br(), 
+                         htmlOutput("selected_var"))
             )
         )
     )
@@ -125,17 +149,174 @@ ui <- dashboardPage(
 # Define server logic required to draw a histogram
 server <- function(input, output, session) {
     
+    # HIGHEST RISK PATIENTS---------------------------------------------------------------
+    
+    observeEvent(input$high_risk, {
+        updateNumericRangeInput(session, "age_range", value = c(48, 68))
+        updateTextInput(session, "sex", value = "MALE")
+        updateTextInput(session, "race", value = "Asian")
+        updateTextInput(session, "injury_loc", value = "Home")
+        updateTextInput(session, "injury_desc", value = "Accidental Falls")
+        updateTextInput(session, "forearm_fx_desc", value = list('Op red-int fix rad/ulna', 
+                                                                 'Open reduc-radius/uln fx', 
+                                                                 'Cl red-int fix rad/ulna', 
+                                                                 'Cl fx reduc-radius/ulna'))
+       
+    })
+    
+    # LOWEST RISK PATIENTS---------------------------------------------------------------    
+    observeEvent(input$low_risk, {
+        updateNumericRangeInput(session, "age_range", value = c(62, 84))
+        updateTextInput(session, "sex", value = "FEMALE")
+        updateTextInput(session, "race", value = "Black")
+        updateTextInput(session, "injury_loc", value = "Home")
+        updateTextInput(session, "injury_desc", value = "Accidental Falls")
+        updateTextInput(session, "forearm_fx_desc", value = list('Op red-int fix rad/ulna', 
+                                                                 'Open reduc-radius/uln fx', 
+                                                                 'Cl red-int fix rad/ulna', 
+                                                                 'Cl fx reduc-radius/ulna'))
+        
+    })
+    
+    # ALL PATIENTS---------------------------------------------------------------
+    observeEvent(input$all_pats, {
+        updateNumericRangeInput(session, "age_range", value = c(0, 105))
+        updateTextInput(session, "sex", value = list("MALE", "FEMALE"))
+        updateTextInput(session, "race", value = list('White', 'Black', 'Asian', 'Other/NFS', "Unknown" ))
+        updateTextInput(session, "injury_loc", value = list('Farm',
+                                                            'Home',
+                                                            'Industrial Place and Premises',
+                                                            'Mine/Quarry',
+                                                            'Other',
+                                                            'Public Building',
+                                                            'Recreational/Sport',
+                                                            'Residential Institution',
+                                                            'Street/Highway',
+                                                            'Unknown',
+                                                            'Unspecified'))
+        updateTextInput(session, "injury_desc", value = list('Accidental Falls',
+                                                             'Accidents Caused By Fire And Flames',
+                                                             'Accidents Due To Natural And Environmental Factors',
+                                                             'Air And Space Transport Accidents',
+                                                             'Homicide And Injury Purposely Inflicted By Other Persons',
+                                                             'Injury Undetermined Whether Accidentally Or Purposely Inflicted',
+                                                             'Legal Intervention',
+                                                             'Motor Vehicle Nontraffic Accidents',
+                                                             'Motor Vehicle Traffic Accidents',
+                                                             'Other Accidents',
+                                                             'Other Road Vehicle Accidents',
+                                                             'Railway Accidents',
+                                                             'Suicide And Self-Inflicted Injury',
+                                                             'Unknown',
+                                                             'Vehicle Accidents Not Elsewhere Classifiable',
+                                                             'Water Transport Accidents'))
+        updateTextInput(session, "forearm_fx_desc", value = list('Op red-int fix rad/ulna', 
+                                                                 'Open reduc-radius/uln fx', 
+                                                                 'Cl red-int fix rad/ulna', 
+                                                                 'Cl fx reduc-radius/ulna'))
+        
+    })
+    
+    # ADULT PATIENTS---------------------------------------------------------------
+    observeEvent(input$adult_pats, {
+        updateNumericRangeInput(session, "age_range", value = c(18, 105))
+        updateTextInput(session, "sex", value = list("MALE", "FEMALE"))
+        updateTextInput(session, "race", value = list('White', 'Black', 'Asian', 'Other/NFS', "Unknown" ))
+        updateTextInput(session, "injury_loc", value = list('Farm',
+                                                            'Home',
+                                                            'Industrial Place and Premises',
+                                                            'Mine/Quarry',
+                                                            'Other',
+                                                            'Public Building',
+                                                            'Recreational/Sport',
+                                                            'Residential Institution',
+                                                            'Street/Highway',
+                                                            'Unknown',
+                                                            'Unspecified'))
+        updateTextInput(session, "injury_desc", value = list('Accidental Falls',
+                                                             'Accidents Caused By Fire And Flames',
+                                                             'Accidents Due To Natural And Environmental Factors',
+                                                             'Air And Space Transport Accidents',
+                                                             'Homicide And Injury Purposely Inflicted By Other Persons',
+                                                             'Injury Undetermined Whether Accidentally Or Purposely Inflicted',
+                                                             'Legal Intervention',
+                                                             'Motor Vehicle Nontraffic Accidents',
+                                                             'Motor Vehicle Traffic Accidents',
+                                                             'Other Accidents',
+                                                             'Other Road Vehicle Accidents',
+                                                             'Railway Accidents',
+                                                             'Suicide And Self-Inflicted Injury',
+                                                             'Unknown',
+                                                             'Vehicle Accidents Not Elsewhere Classifiable',
+                                                             'Water Transport Accidents'))
+        updateTextInput(session, "forearm_fx_desc", value = list('Op red-int fix rad/ulna', 
+                                                                 'Open reduc-radius/uln fx', 
+                                                                 'Cl red-int fix rad/ulna', 
+                                                                 'Cl fx reduc-radius/ulna'))
+        
+    })
+    
+    # PEDIATRIC PATIENTS---------------------------------------------------------------
+    observeEvent(input$peds_pats, {
+        updateNumericRangeInput(session, "age_range", value = c(0, 17))
+        updateTextInput(session, "sex", value = list("MALE", "FEMALE"))
+        updateTextInput(session, "race", value = list('White', 'Black', 'Asian', 'Other/NFS', "Unknown" ))
+        updateTextInput(session, "injury_loc", value = list('Farm',
+                                                            'Home',
+                                                            'Industrial Place and Premises',
+                                                            'Mine/Quarry',
+                                                            'Other',
+                                                            'Public Building',
+                                                            'Recreational/Sport',
+                                                            'Residential Institution',
+                                                            'Street/Highway',
+                                                            'Unknown',
+                                                            'Unspecified'))
+        updateTextInput(session, "injury_desc", value = list('Accidental Falls',
+                                                             'Accidents Caused By Fire And Flames',
+                                                             'Accidents Due To Natural And Environmental Factors',
+                                                             'Air And Space Transport Accidents',
+                                                             'Homicide And Injury Purposely Inflicted By Other Persons',
+                                                             'Injury Undetermined Whether Accidentally Or Purposely Inflicted',
+                                                             'Legal Intervention',
+                                                             'Motor Vehicle Nontraffic Accidents',
+                                                             'Motor Vehicle Traffic Accidents',
+                                                             'Other Accidents',
+                                                             'Other Road Vehicle Accidents',
+                                                             'Railway Accidents',
+                                                             'Suicide And Self-Inflicted Injury',
+                                                             'Unknown',
+                                                             'Vehicle Accidents Not Elsewhere Classifiable',
+                                                             'Water Transport Accidents'))
+        updateTextInput(session, "forearm_fx_desc", value = list('Op red-int fix rad/ulna', 
+                                                                 'Open reduc-radius/uln fx', 
+                                                                 'Cl red-int fix rad/ulna', 
+                                                                 'Cl fx reduc-radius/ulna'))
+        
+    })
+    
     
     output$selected_var <- renderText({ 
-        paste("One out of every", 
-              "5", 
-              input$sex, 
-              "ranging from age", 
+        
+        paste("<b>",
+              knitr::combine_words(input$race),
+              knitr::combine_words(input$sex),
+              "</b>",
+              "between the age of ", 
+              "<b>",
               input$age_range[1], 
               "to", 
-              input$age_range[2], 
-              "will suffer from Compartment Syndrome after a",
-              first(input$injury_desc))
+              input$age_range[2],
+              "</b>",
+              "that had", 
+              "<b>", 
+              knitr::combine_words(input$forearm_fx_desc),
+              "</b>",
+              "to correct injuries from",
+              "<b>",
+              knitr::combine_words(input$injury_desc), 
+              '</b>', 
+              "will suffer from Compartment Syndrome." )
     })
     
     #--------------------------------------------------
@@ -276,7 +457,7 @@ server <- function(input, output, session) {
     output$cs_plot <- renderD3({
         
        pred_data() %>%
-            summarise(Compartment_Syndrome = round(mean(pred_true, na.rm = TRUE),4)*100, 
+            summarise(Compartment_Syndrome = round(median(pred_true, na.rm = TRUE),4)*100, 
                       No_Compartment_Syndrome = 100-Compartment_Syndrome)  %>% 
             pivot_longer(everything()) %>% 
             rename(

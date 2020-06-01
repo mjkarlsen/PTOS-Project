@@ -25,7 +25,7 @@ bars.enter().append('rect')
     .attr('height',col_heigth() * 0.9)
     .attr('y', function(d, i) { return i * col_heigth() + col_top(); })
     .attr('x', col_left())
-    .attr('fill', '#0072B2')
+    .attr('fill', '#FF0000')  //0072B2
     .attr('opacity', function(d) { return d.y / actual_max(); })
     .attr('tip', function(d) { return (d.y * col_width()) + col_left(); })
     .attr("d", function(d) { return d.x; })
@@ -38,11 +38,11 @@ bars.enter().append('rect')
     })    
     .on("mouseover", function(){
         d3.select(this)
-          .attr('fill', '#ffb14e');
+          .attr('fill', '#FF3300');
     })
     .on("mouseout", function(){
         d3.select(this)
-          .attr('fill', '#0072B2');
+          .attr('fill', '#FF0000');
     });
 
 bars.exit().remove();
@@ -105,6 +105,6 @@ svg.append('text')
   .attr('y', svg_height() * 0.05)
   .style('font-size', '18px') 
   .style('font-family', 'sans-serif')
-  .text('Compartment Syndrome Probability');
+  .text('Compartment Syndrome Probability Score');
   
   

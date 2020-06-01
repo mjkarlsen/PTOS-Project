@@ -136,6 +136,9 @@ test_data %>%
   summarize.(cnt = n.(), by = fltr_fasciotomy)
 
 
+full_data %>% 
+  summarize.(cnt = n.(), by = fltr_fasciotomy)
+
 
 dfs<- list("full_data")
 file_path <- 'E:/Northwestern/12 - Capstone/PTOS_Data/'
@@ -280,9 +283,10 @@ rf_model_results <- rf_pred %>%
     select(id, .pred_FALSE, .pred_TRUE, fltr_fasciotomy) %>%
     summarize.(pred_false = mean(.pred_FALSE),
                pred_true = mean(.pred_TRUE),
+               pred_false_max = max(.pred_FALSE),
+               pred_true_max = max(.pred_TRUE),
                by = c(id, fltr_fasciotomy)) %>%
     arrange(-pred_true)
-
 
 
 patient_rf <- rf_model_results %>%
@@ -347,11 +351,6 @@ results
 
 
 ```
-```{r}
-list
-```
-
-
 
 
 ```{r fig.height=10}
