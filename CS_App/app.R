@@ -8,8 +8,11 @@ library(plotly)
 library(tidyverse)
 
 
-load(file = "E:/Northwestern/12 - Capstone/Project/CS_App2/patient_rf.RData")
+load(file = "patient_rf.RData")
 
+
+# library(rsconnect)
+# rsconnect::deployApp('E:/Northwestern/12 - Capstone/Project/PTOS-Project/CS_App/app.R')
 
 # ----------------------------------------------------------------------------------------
 #  BUILD THE USER INTERFACE FOR SHINY
