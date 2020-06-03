@@ -8,7 +8,7 @@ output:
     widescreen: true
 ---
 
-# Overview of Compartment Syndrome
+# <font size="20"> Overview of Compartment Syndrome </font>
 
 ## What is Compartment Syndrome?
 
@@ -49,15 +49,7 @@ In this study, we will use <b>Fasciotomy</b> as the indicator for <b>Compartment
 
 </div>
 
-# Overview of Forearm Factures
-
-## ORdered Test
-
-1. Item 1
-2. Item 2
-3. Item 3
-    + Item 3a
-    + Item 3b
+# <font size="20"> Overview of Forearm Factures </font>
 
 ## Four Types of Forearm Fracture Treatments
 
@@ -83,11 +75,8 @@ In this study, we will use <b>Fasciotomy</b> as the indicator for <b>Compartment
 
 ## Review of the Four Forearm Fracture Treatments
 <center>
-
 ![](images/forearm_fractures.png){width=950px, height=275px}
-
 </center>
-
 
 <br>
 
@@ -109,7 +98,70 @@ In this study, we will use <b>Fasciotomy</b> as the indicator for <b>Compartment
 
 </div>
 
-## Forearm Fracture Results in PTOS
+# <font size="20"> Pennsylvania Trauma Outcome System </font>
+
+## What is Pennsylvania Trauma Outcome System? 
+
+<center>
+![](images/ptos.png){width=250px}
+</center>
+
+<br>
+
+<div style="font-size: 18px">
+This is the primary data source used for our analysis of Compartment Syndrome in Pediatrics Patients. 
+
+- Approximately 530k anonymized patient records and 1,400 columns of descriptive information regarding each procedure 
+- Medical results occurring between 2010 - 2015
+- Patient demographics, diagnosis, prehospital procedures, surgical procedures, and outcomes
+- Uses International Statistical Classification of Diseases and Related Health Problems (ICD) medical coding to classify causes of injury, examination results, processes, and treatments. 
+
+<br>
+
+<em>Pennsylvania Trauma Outcome System will be referred to as <b>PTOS</b> going forward. </em>
+
+</div>
+
+# <font size="20"> Objective of Compartment Syndrome Analysis </font>
+
+## Objective of Analysis
+Identify the likelihood of <em> compartment syndrome </em> in pediatric patients who suffered from <em> forearm fractures </em>.
+
+<br>
+
+![](images/objective.png){width=1000px}
+
+# Data Preparation
+
+## Data Preparation: traumaR
+
+<div style="position:absolute; top: 10px; right: 30px">
+
+<img src="images/logo.png" width="175px" align="right">
+
+</div>
+
+
+<br>
+
+- Developed a custom R package to translate all medical codes into human friendly terms
+  - Wrote over 50 functions to automate this work and make it repeatable
+- PTOS Data consists of 530k anonymized patient records and 1,400 columns
+  - Columns mostly consisting of medical codes which required translation
+  - Necessary to normalize the data into structured data frame
+- The final results create two main data frames joined together by patient_id
+  - Patient Information
+  - Medical Procedures
+  
+[traumaR](https://github.com/mjkarlsen/traumaR)
+
+# Exploratory Data Analysis
+
+## EDA: Patient Demographics
+
+
+
+## EDA: Forearm Fracture Results
 
 <div style="float: left; width: 60%;">
 ![](images/gt_graph_4.png){width=600px}
@@ -124,42 +176,14 @@ In this study, we will use <b>Fasciotomy</b> as the indicator for <b>Compartment
 
 </div>
 
-
-# Objective
-
-## Objective
-Identify the likelihood of <em> compartment syndrome </em> in pediatric patients (less than seventeen years old) who suffered from <em> forearm fractures </em>.
-
-<strong> Challenges with Data </strong>
-
-- Compartment Syndrome diagnosis is typically not accurate or reliable
-  - Models will focus on predicting Fasciotomy 
-- Forearm Fractures does not contain details to distinguish between right or left arms 
-  - Duplicate codes for forearm factures will be removed and counted once
-
-
 ## Fasciotomy Results in PTOS Data
-
+<center>
 ![](images/gt_graph_1.png){width=1000px}
+</center>
 
-<div style = "font-size: 18px">
-- Patients results between 2010 to 2015
-- PTOS contains 630 patients that had forearm surgery and complications from compartment syndrome 
-</div>
+## EDA: Fasciotomy Results 
 
-## Fasciotomy Results 
-
-<div style="float: left; width: 60%;">
-![](images/gt_graph_2.png){width=600px}
-</div>
-
-<div style="float: right; width: 35%; font-size: 18px">
-- Higher percentage of patients need a fasciotomy when forearm surgery requires open incision
-- Another bullet point
-- One more for good luck
-
-</div>
-```{r eval=FALSE, cars, fig.cap="A scatterplot.", include=FALSE}
-plot(cars)
-```
+<center>
+![](images/gt_graph_2.png){width=700px}
+</center>
 
