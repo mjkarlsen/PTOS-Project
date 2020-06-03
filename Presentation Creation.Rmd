@@ -12,57 +12,118 @@ output:
 
 ## What is Compartment Syndrome?
 
+<iframe width="560" height="315" src="https://www.youtube.com/embed/hDHyrhbwq-M?controls=0&amp;start=0&end=28;" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
 
-<div style="float: left; width: 50%;">
-
-- Compartment syndrome refers to the <b>increased pressure</b> inside the section of the limb that contains muscles, nerves, and blood vessels. 
-- This increased pressure results in the reduction of blood supply and tissue necrosis. 
-- It usually develops in the lower leg and forearm after traumas like a bone fracture. 
-  - If not treated in time, it can lead to <b> permanent muscle and nerve damage. </b>
-
-</div>
-
-<div style="float: right; width: 45%;">
-
-![](images/compartment_syndrome_1.png)
-</div>
 
 ## When does Compartment Syndrome occur?
-- Compartment Syndrome typically develops after surgery or trauma, causing excessive fluid in the fascia, causing pressure and pain in the affected limb. 
-- The decreased circulation causes the muscle can die, resulting in permanent damage left untreated. 
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/hDHyrhbwq-M?controls=0&amp;start=28&end=78" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+
+
+## How is Compartment Syndrome treated?
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/hDHyrhbwq-M?controls=0&amp;start=79&end=217" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+
+
+
+## Review of Compartment Syndrome & Fasciotomy
 
 <div class="centered">
 ![](images/process_flow.png){width=1000px}
 </div>
 
-## How is Compartment Syndrome treated?
+<!-- <div style="float: right; width: 60%;"> -->
+<!-- ![](images/CS_1.png){width=425px} -->
+<!-- </div> -->
 
-<div style="float: left; width: 60%;">
-
-- Treatment of compartment syndrome is a fasciotomy or removal of external compression, which can relieve the pressure and maintains blood flow to the muscle. 
-
+<div style="font-size: 22px">
+In this study, we will use <b>Fasciotomy</b> as the indicator for <b>Compartment Syndrome</b>. 
 </div>
 
-<div style="float: right; width: 40%;">
-![](images/CS_1.png){width=350px}
-</div>
+<div style="font-size: 20px">
+- We did this for the following reasons:
+  - Compartment Syndrome is a diagnosis that is subject to human error
+    - The PTOS results are sparse in terms of date, time, and accuracy of diagnosis
+  - Fasciotomy is a procedure that takes place because of Compartment Syndrome
+    - This is a surgical procedure and it is well documented in the PTOS data
 
+</div>
 
 # Overview of Forearm Factures
 
-## What are the four major types of Forearm Fracture Treatments?
+## ORdered Test
+
+1. Item 1
+2. Item 2
+3. Item 3
+    + Item 3a
+    + Item 3b
+
+## Four Types of Forearm Fracture Treatments
+
+1. <b>Open Reduction with Internal Fixation</b>
+    + Most common and preferred method for forearm fracture treatment
+2. <b>Closed Reduction without Internal Fixation</b>
+    + Involves manually setting the bone back into place and use of hard cast for stability
+3. <b>Closed Reduction with Internal Fixation</b>
+    + Not a surgical procedure, Minor incision in forearm using pins for stability
+4. <b>Open Reduction without Internal Fixation</b>
+    + Surgical procedure, only performed if there is no need for internal fixator
 
 
-## Forearm Fracture Results
+
+## Review of Open Reduction Forearm Fractures
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/T6qgyXuvCBc?controls=0&amp;start=9&end=133" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+
+## Review of Closed Reduction Forearm Fractures
+
+<iframe width="400" height="225" src="https://www.youtube.com/embed/cy6f7he2e4w?controls=0&amp;start=6&end=189" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+
+
+## Review of the Four Forearm Fracture Treatments
+<center>
+
+![](images/forearm_fractures.png){width=950px, height=275px}
+
+</center>
+
+
+<br>
+
+<div style="float: left; width: 50%; font-size: 18px">
+
+- These <b>are</b> surgical procedures
+- More traumatic fractures requiring invasive techniques
+- Use of plates, screws, and external cast to secure fracture site
+- Patients are <b>sedated</b> using anesthesia
+
+</div>
+
+<div style="float: right; width: 50%; font-size: 18px">
+
+- These are <b>not</b> surgical procedures
+- Technique performed by <b>manipulation</b> for less traumatic fractures
+- Use of pins and cast to hold bones in place for healing
+- Painful technique for patient and performed with or without general anesthetic 
+
+</div>
+
+## Forearm Fracture Results in PTOS
 
 <div style="float: left; width: 60%;">
 ![](images/gt_graph_4.png){width=600px}
 </div>
 
-<div style="float: right; width: 35%; font-size: 18px">
-- Higher percentage of patients need a fasciotomy when forearm surgery requires open incision
-- Another bullet point
-- One more for good luck
+<div style="float: right; width: 35%; font-size: 20px">
+- The Open Reduction with Internal Fixation is the most common technique across the nation
+  - PTOS data show similar results 
+- Pediatric patients tend to be treated with Closed Reduction and casting
+  - Most of the injuries result from falling on the playground or at home
+  - These fractures are usually less traumatic and do not require invasive techniques
+
+</div>
+
 
 # Objective
 

@@ -169,7 +169,7 @@ server <- function(input, output, session) {
     
     # LOWEST RISK PATIENTS---------------------------------------------------------------    
     observeEvent(input$low_risk, {
-        updateNumericRangeInput(session, "age_range", value = c(62, 84))
+        updateNumericRangeInput(session, "age_range", value = c(0, 105))
         updateTextInput(session, "sex", value = "FEMALE")
         updateTextInput(session, "race", value = "Black")
         updateTextInput(session, "injury_loc", value = "Home")
