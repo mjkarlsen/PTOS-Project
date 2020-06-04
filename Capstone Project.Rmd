@@ -8,6 +8,7 @@ date: "5/11/2020"
 
 # devtools::install_github("markfairbanks/tidytable")
 # devtools::install_github("ultramattyice/traumaR")
+
 # devtools::install_github("r-lib/vctrs", INSTALL_opts = "--no-multiarch")
 
 pacman::p_load( traumaR,
@@ -22,16 +23,15 @@ pacman::p_load( traumaR,
                 vip, 
                 yardstick)
 
+
 options(scipen=999)  #remove scientific notation
 knitr::opts_chunk$set(warning = FALSE, 
                       echo = FALSE)
 
+#TODO: add some stuff and feature  
+
+
 ```
-
-## Load Multiple Data Sources
-```{r load_data}
-
-tic()
 
 # raw_data <- fread("~/Data/PTOS_Data.csv", na.strings = c("<unk>", "", "<n/a>")) %>%
 #   as.data.table() #%>%   clean_names()
@@ -70,8 +70,10 @@ for(d in dfs) {
 }
 
 
-
 ```
+
+```{r}
+patient_col_list <- list('sex', 'race', 'payor_class_primary', 'primary_injury_type', 'place_of_injury')
 
 
 
@@ -86,6 +88,7 @@ patient_df_test <- patient_df %>%
                                     default = 'Other Injuries'   ))
 
 
+
 mvta_lvl_1 <- function(.col){
     .col <- case.(stringr::str_detect(.col, "Driver of MV") == TRUE, 'Driver',
                   stringr::str_detect(.col, "Motorcyclist") == TRUE, 'Motorcyclist',
@@ -94,6 +97,7 @@ mvta_lvl_1 <- function(.col){
                   default = 'Other')
     return(.col)
 }
+
 
 mvta_lvl_2 <- function(.col){
   .col <- case.(stringr::str_detect(.col, "Loss Control") == TRUE, 'Loss Control-No Collision', 
@@ -146,6 +150,7 @@ accfall_lvl_1 <- function(.data, .var){
 }
 
 
+
 split_test <- function(.data, .var) {
   .var <- rlang::enquo(.var)
   
@@ -157,6 +162,7 @@ split_test <- function(.data, .var) {
 
 
 
+
 patient_df_test %>%
   filter.(injury_desc == 'Accidental Falls') %>%
   # filter.(injury_desc == 'Other Accidents') %>%
@@ -164,6 +170,7 @@ patient_df_test %>%
   filter.(peds_adult_flag == 'Peds') %>%
   select.(cause_of_injury_e_code) %>% 
   split_test(., cause_of_injury_e_code)
+
 
   # select.(cause_of_injury_e_code, peds_adult_flag, fall_height, fltr_fasciotomy, injury_desc) %>% 
   # filter.(injury_desc %in%  c('Motor Vehicle Traffic Accidents', 'Accidental Falls')) %>%  
@@ -181,6 +188,7 @@ patient_df_test %>%
   arrange(top_level) #-`TRUE`)
 
 ```
+
 
 
 
@@ -291,7 +299,7 @@ reg_1 <- regsubsets(fltr_fasciotomy ~ subchapter_desc * race * injury_desc,
 summary(reg_1)
 
 
-```
+
 
 
 
@@ -300,6 +308,7 @@ summary(reg_1)
 
 
 library(woeBinning)
+
 
 
 
@@ -318,6 +327,7 @@ select_cols <- df %>%
   filter(n >1) %>% 
   pull(chapter_desc)
 
+
 df <- df %>% filter(chapter_desc %in% select_cols)
 
 
@@ -330,6 +340,7 @@ binning <- woe.tree.binning(df,
                  target.var = 'fltr_fasciotomy', 
                  pred.var = c( 'injury_desc', 'chapter_desc'),  
                  event.class='FALSE')
+
 
 
 df %>% 
@@ -357,13 +368,33 @@ df_woe %>%
   count(fltr_fasciotomy) %>% 
   mutate(props = n/sum(n))
 
-```
+  .flat_trans <- .full_trans %>%
+    filter.(data_source != 'injury') %>%
+    summarize.(code_cd = paste(code_cd, collapse = " "),
+               code_desc = paste(code_desc, collapse = ", "),
+               by = c(id, data_source)
+    ) %>%
+    pivot_wider.(names_from = data_source,
+                 values_from = c(code_cd, code_desc)) %>%
+    drop_na.() %>%
+    mutate.(fltr_diagnosis = (str_detect(code_cd_diagnosis, #diagnosis for forearm fx
+                                            pattern = !!forearm_diag)),
+            fltr_procedure = (str_detect(code_cd_procedure,
+                                            pattern = !!forearm_surgery)),#forearm surgery
+            fltr_complication = str_detect(code_cd_complication,
+                                           pattern = '32'),
+            fltr_fasciotomy = str_detect(code_cd_procedure,
+                                         pattern = '83.14'))
+
+  assign(paste("trans_flat_df_test"), data.frame(.flat_trans), envir = .GlobalEnv)
+}
 
 ## Using TidyModel FrameWork from Max Kuhn
 * Need to bin the procedures together
 * Need to bin the injuries together
 
 ```{r tidymodel_wf}
+
 
 model_df <- fx_proc %>% 
   mutate.(fltr_fasciotomy = as_factor(fltr_fasciotomy),
@@ -374,6 +405,8 @@ model_df <- fx_proc %>%
   as_tibble() %>% 
   na.omit() %>% 
   head(2000)
+
+```
 
 
 set.seed(123)
@@ -391,12 +424,17 @@ test_df %>%
   count(fltr_fasciotomy) %>% 
   mutate(props = n/sum(n))
 
+```{r}
+trans_full_df %>% 
+  filter.(id == '0616196020000001') %>% 
+  create_flat_trans()
 
 set.seed(234)
 val_set <- validation_split(train_df, 
                             strata = injury_desc,
                             prop = 0.80)
 val_set
+
 
 cores <- parallel::detectCores()-1
 
@@ -419,6 +457,7 @@ rf_workflow <-
   workflow() %>% 
   add_model(rf_mod) %>% 
   add_recipe(rf_recipe)
+
 
 
 rf_mod %>%    
