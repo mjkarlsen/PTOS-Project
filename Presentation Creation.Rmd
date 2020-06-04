@@ -15,7 +15,7 @@ output:
 <iframe width="560" height="315" src="https://www.youtube.com/embed/hDHyrhbwq-M?controls=0&amp;start=0&end=28;" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
 
 
-## When does Compartment Syndrome occur?
+## Why does Compartment Syndrome occur?
 
 <iframe width="560" height="315" src="https://www.youtube.com/embed/hDHyrhbwq-M?controls=0&amp;start=28&end=78" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
 
@@ -58,7 +58,7 @@ In this study, we will use <b>Fasciotomy</b> as the indicator for <b>Compartment
 2. <b>Closed Reduction without Internal Fixation</b>
     + Involves manually setting the bone back into place and use of hard cast for stability
 3. <b>Closed Reduction with Internal Fixation</b>
-    + Not a surgical procedure, Minor incision in forearm using pins for stability
+    + Not a surgical procedure, minor incision in forearm using pins for stability
 4. <b>Open Reduction without Internal Fixation</b>
     + Surgical procedure, only performed if there is no need for internal fixator
 
@@ -157,8 +157,119 @@ Identify the likelihood of <em> compartment syndrome </em> in pediatric patients
 
 # Exploratory Data Analysis
 
-## EDA: Patient Demographics
+## EDA: Patient 
 
+<!-- Top Left -->
+
+<div style="position:absolute; top: 130px; left: 30px">
+
+<img src="images/ggplot_sex.png" width="500px" >
+
+</div>
+
+<!-- Bottom Left -->
+
+<div style="position:absolute; top: 400px; left: 30px">
+
+<img src="images/ggplot_payor_class_primary.png" width="500px" >
+
+</div>
+
+<!-- Top Right -->
+
+<div style="position:absolute; top: 130px; right: 30px">
+
+<img src="images/ggplot_race.png" width="500px" >
+
+</div>
+
+<!-- Bottom Right -->
+
+<div style="position:absolute; top: 400px; right: 30px">
+
+<img src="images/ggplot_place_of_injury.png" width="500px" >
+
+</div>
+
+
+## EDA: Forearm Fractures
+
+<!-- Top Left -->
+
+<div style="position:absolute; top: 130px; left: 30px">
+
+<img src="images/ggplot_forearm_fx_desc.png" width="500px" >
+
+</div>
+
+<!-- Bottom Left -->
+
+<div style="position:absolute; top: 400px; left: 30px">
+
+<img src="images/ggplot_injury_desc.png" width="500px" >
+
+</div>
+
+<!-- Top Right -->
+
+<div style="position:absolute; top: 130px; right: 30px">
+
+<img src="images/ggplot_forearm_fx_loc.png" width="500px" >
+
+</div>
+
+<!-- Bottom Right -->
+
+
+<div style="position:absolute; top: 400px; right: 30px">
+
+<img src="images/ggplot_fall_height.png" width="500px" >
+
+</div>
+
+
+## EDA: Fasciotomy 
+
+<!-- Top Left -->
+
+<div style="position:absolute; top: 130px; left: 30px">
+
+<img src="images/ggplot_fltr_fasciotomy.png" width="500px" >
+
+</div>
+
+<!-- Bottom Left -->
+
+<div style="position:absolute; top: 400px; left: 30px">
+
+<img src="images/ggplot_fltr_complication.png" width="500px" >
+
+</div> 
+
+<!-- Top Right -->
+
+<div style="position:absolute; top: 130px; right: 30px">
+
+<img src="images/ggplot_fasciotomy_loc.png" width="500px" >
+
+</div>
+
+<!-- Bottom Right -->
+
+
+<div style="position:absolute; top: 400px; right: 30px">
+
+<img src="images/ggplot_discharge_status.png" width="500px" >
+
+</div>
+
+
+## EDA: Compartment Syndrome vs. Fasciotomy
+
+<br>
+<center>
+![](images/gt_graph_3.png){width=750px}
+</center>
 
 
 ## EDA: Forearm Fracture Results
@@ -187,3 +298,14 @@ Identify the likelihood of <em> compartment syndrome </em> in pediatric patients
 ![](images/gt_graph_2.png){width=700px}
 </center>
 
+# Modeling
+
+
+
+# Predictions
+
+
+
+# Visualization
+
+https://mjkarlsen.shinyapps.io/Compartment_Syndrome/

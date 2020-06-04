@@ -305,7 +305,7 @@ gt_graph_3 <- patient_df %>%
   mutate_across.(is.factor, ~(relevel(.x, "TRUE"))) %>% 
   pivot_wider.(fltr_complication, cnt) %>% 
   adorn_totals(where = c("row","col")) %>% 
-  # mutate_across.(is.numeric, ~.x /21299) %>% 
+  mutate_across.(is.numeric, ~.x /21299) %>%  #21299  #PEDS - 2741  #ADULTS - 18558
   gt(rowname_col = 'fltr_fasciotomy') %>% 
   cols_width(
     vars('fltr_fasciotomy') ~ px(150), 
@@ -320,8 +320,10 @@ gt_graph_3 <- patient_df %>%
     columns = vars('TRUE', 'FALSE', Total)
   ) %>% 
   tab_stubhead(label = "Fasciotomy Procedure") %>% 
-  fmt_number(vars('TRUE', 'FALSE', 'Total'), 
-              decimals = 0) %>% 
+  # fmt_number(vars('TRUE', 'FALSE', 'Total'), 
+  #             decimals = 0) %>% 
+  fmt_percent(vars('TRUE', 'FALSE', 'Total'), 
+              decimals = 1) %>% 
   tab_options(row.striping.include_table_body = TRUE) %>%
   tab_style(
     style = cell_borders(
@@ -436,22 +438,47 @@ gt_graph_4 %>%
 
 patient_df_list <- list('sex',
                         'race',
+                        'forearm_fx_desc', 
+                        'forearm_fx_loc', 
                         'primary_injury_type',
                         'injury_desc', 
                         'place_of_injury', 
-                        'forearm_fx_desc'
+                        'payor_class_primary', 
+                        'discharge_status', 
+                        'fall_height', 
+                        'fltr_fasciotomy', 
+                        'fasciotomy_loc', 
+                        'fltr_complication'
                         )
 
-bar_func <- function(data, col){
+rename_titles_list <- list('Gender of Patient',
+                        'Race of Patient',
+                        'Forearm Fracture', 
+                        'Forearm Fracture Surgical Location', 
+                        'Primary Type of Injury',
+                        'Injury Description', 
+                        'Location of Injury', 
+                        'Insurance Type', 
+                        'Discharge Status of Patient', 
+                        'Height of Fall', 
+                        'Patient Required Fasciotomy', 
+                        'Surgical Location of Fasciotomy', 
+                        'Patient Diagnosis with Compartment Syndrome'
+                        )
+
+
+bar_func <- function(data, col, title_name){
 
   col <- rlang::sym(col)
+  
+  title_name <- rlang::sym(title_name)
 
   graph_results <- data %>% 
-    filter.(fltr_fasciotomy == T) %>%
+    # filter.(fltr_fasciotomy == T) %>%
     filter.(fltr_procedure == T) %>%
     summarize.(total = n.(), by = c(!!col, peds_adult_flag)) %>% 
     arrange.(-total) %>% 
-    slice.(1:10) %>% 
+    slice.(1:10) %>%
     na.omit() %>% 
     ggplot(aes(x = reorder(!!col, total), 
                y = total, 
@@ -459,37 +486,33 @@ bar_func <- function(data, col){
                label = paste0(total))) + 
     geom_bar(position = "dodge", stat = "identity") +
     geom_text(hjust = 'left', y = 0)+
-    ggdark::dark_theme_classic() +
-    # ggsci::scale_fill_jco() +
+    ggthemes::theme_stata() +
+    ggsci::scale_fill_jco() +
     coord_flip() +
-    labs(title = janitor::make_clean_names(expr_text(col), case = "title"),
+    labs(title = janitor::make_clean_names(expr_text(title_name), case = "title"),
          y = "Count of Patients",
          x = NULL) +
-    theme(axis.text.y=element_text(angle=0, hjust=1), legend.position = "none") +
+    theme(axis.text.y=element_text(angle=0, hjust=1), 
+          legend.position = "none", 
+          plot.margin = unit(c(0,0,0,0), "cm")) +
     scale_x_discrete(labels = function(x) str_wrap(x, width = 30)) +
     facet_wrap(~peds_adult_flag, scales = "free_x")
   
-  return( graph_results)
+  # return( graph_results)
+  
+  ggsave(filename = paste0("ggplot_", col, ".png") ,
+         plot = last_plot(), 
+         width = 8,
+         height = 4,
+         dpi = 600, 
+         path = paste0(getwd(),"/images/"))
+  
 }
 
 
-map.(patient_df_list, ~ bar_func(patient_df, .x))
+# map.(patient_df_list, ~ bar_func(patient_df, .x))
 
-#TODO
-# Add in percentage of total comparison by adults and peds patients
-# https://sebastiansauer.github.io/percentage_plot_ggplot2_V2/
-# https://sebastiansauer.github.io/ordering-bars/
-
-# patient_df %>%
-#   select.(fltr_fasciotomy, peds_adult_flag, place_of_injury) %>%
-#   ggplot(aes(x = place_of_injury, group = peds_adult_flag, label = ..count..)) +
-#   geom_bar(aes(y = ..prop.., fill = factor(..x..)), stat = "count") +
-#    geom_text(aes( label = scales::percent(..prop.., 4),
-#                    y= ..prop.. ), stat= "count", vjust = -.5) +
-#   facet_wrap(~peds_adult_flag) +
-#   coord_flip()
-
-
+walk2(patient_df_list, rename_titles_list, ~ bar_func(patient_df, .x, .y))
 
 ```
 
