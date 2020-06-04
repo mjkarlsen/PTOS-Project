@@ -21,7 +21,11 @@ load(file = "patient_rf.RData")
 
 ui <- dashboardPage(
     
+<<<<<<< HEAD
     
+=======
+
+>>>>>>> e5284e46c2861ddae47b190c60e272e5aac814d0
     dashboardHeader(
         title = "Compartment Syndrome Prediction Dashboard",
         titleWidth = 400),
@@ -85,7 +89,11 @@ ui <- dashboardPage(
                     selected = c('Motor Vehicle Nontraffic Accidents',
                                  'Motor Vehicle Traffic Accidents'), 
                     options = list(`actions-box` = TRUE)), 
+<<<<<<< HEAD
         
+=======
+
+>>>>>>> e5284e46c2861ddae47b190c60e272e5aac814d0
         pickerInput(inputId = "forearm_fx_desc", 
                     label ="Forearm Fracture Description",
                     choices = list('Op red-int fix rad/ulna', 
@@ -95,7 +103,11 @@ ui <- dashboardPage(
                     multiple = TRUE, 
                     selected = 'Op red-int fix rad/ulna', 
                     options = list(`actions-box` = TRUE)) , 
+<<<<<<< HEAD
         
+=======
+         
+>>>>>>> e5284e46c2861ddae47b190c60e272e5aac814d0
         
         
         fluidRow( align = "center",
@@ -113,8 +125,13 @@ ui <- dashboardPage(
                                style="color: #fff; background-color: #FF0000; border-color: #2e6da4"), 
                   actionButton("low_risk", "Lowest Risk Patients", width = "175px", 
                                style="color: #fff; background-color: #3399FF; border-color: #2e6da4"), 
+<<<<<<< HEAD
         )
         
+=======
+                  )
+
+>>>>>>> e5284e46c2861ddae47b190c60e272e5aac814d0
     ),
     dashboardBody(
         tabsetPanel(
@@ -164,7 +181,11 @@ server <- function(input, output, session) {
                                                                  'Open reduc-radius/uln fx', 
                                                                  'Cl red-int fix rad/ulna', 
                                                                  'Cl fx reduc-radius/ulna'))
+<<<<<<< HEAD
         
+=======
+       
+>>>>>>> e5284e46c2861ddae47b190c60e272e5aac814d0
     })
     
     # LOWEST RISK PATIENTS---------------------------------------------------------------    
@@ -325,7 +346,11 @@ server <- function(input, output, session) {
     #--------------------------------------------------
     # UPDATING DATA FOR VISUALIZATIONS
     #--------------------------------------------------
+<<<<<<< HEAD
     
+=======
+
+>>>>>>> e5284e46c2861ddae47b190c60e272e5aac814d0
     
     # Total Patient Count ------------------------------------------
     
@@ -389,13 +414,18 @@ server <- function(input, output, session) {
     
     
     pred_data <- reactive({
+<<<<<<< HEAD
         res <-  patient_rf %>% 
+=======
+       res <-  patient_rf %>% 
+>>>>>>> e5284e46c2861ddae47b190c60e272e5aac814d0
             filter(between(age_in_yrs , (input$age_range[1]),  (input$age_range[2])) ,
                    sex %in% c(input$sex),
                    race %in% c(input$race), 
                    place_of_injury %in% c(input$injury_loc), 
                    injury_desc %in% c(input$injury_desc),
                    forearm_fx_desc %in% c(input$forearm_fx_desc),
+<<<<<<< HEAD
             )
         
         res
@@ -403,6 +433,15 @@ server <- function(input, output, session) {
     })
     
     
+=======
+                   )
+       
+       res
+        
+    })
+
+
+>>>>>>> e5284e46c2861ddae47b190c60e272e5aac814d0
     # BASE TABLE Patient Count ------------------------------------------
     
     base_table <- reactive({
@@ -413,8 +452,13 @@ server <- function(input, output, session) {
                    forearm_fx_desc %in% c(input$forearm_fx_desc)) 
         res
     })
+<<<<<<< HEAD
     
     
+=======
+        
+
+>>>>>>> e5284e46c2861ddae47b190c60e272e5aac814d0
     
     
     # Top Injury Locations (server) -------------------------------------------
@@ -459,7 +503,11 @@ server <- function(input, output, session) {
     # Compartment Syndrome Graph (server) -------------------------------------------
     output$cs_plot <- renderD3({
         
+<<<<<<< HEAD
         pred_data() %>%
+=======
+       pred_data() %>%
+>>>>>>> e5284e46c2861ddae47b190c60e272e5aac814d0
             summarise(Compartment_Syndrome = round(median(pred_true, na.rm = TRUE),4)*100, 
                       No_Compartment_Syndrome = 100-Compartment_Syndrome)  %>% 
             pivot_longer(everything()) %>% 
@@ -470,7 +518,11 @@ server <- function(input, output, session) {
             ) %>%
             r2d3("cs_bar_plot.js")
     })
+<<<<<<< HEAD
     
+=======
+   
+>>>>>>> e5284e46c2861ddae47b190c60e272e5aac814d0
     
     
 }

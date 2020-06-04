@@ -2,9 +2,20 @@
 .Rhistory
 .RData
 .Ruserdata
+<<<<<<< HEAD
 mc_slide_default.Rhtml
 surgery_basket.csv
 tall_transactions.csv
 ~$ Slide Layout.docx
 images
 ~WRL0375.tmp
+=======
+surgery_basket
+surgery_basket.csv
+tall_transactions
+tall_transactions.csv
+images
+CS Slide Layout.docx
+~$ Slide Layout.docx
+mc_slide_default.Rhtml
+>>>>>>> e5284e46c2861ddae47b190c60e272e5aac814d0
