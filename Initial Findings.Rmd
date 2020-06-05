@@ -533,20 +533,30 @@ patient_df %>%
 There is a significant class imbalance for pediatric patients that had both forearm surgeries and a fasciotomy. Out of 2,741 patients, only 68 had a fasciotomy resulting in less than 3%. The initial models were memorizing the results and predicting that no patient would have a fasciotomy resulting in a model with a 3% error. From a glance, it appears to be a decent model, but it will not generalize well or help identify patients at high risk for compartment syndrome. 
 
 ```{r class_imbalance}
-patient_df %>% 
+class_imbalance_graph <- patient_df %>% 
   filter.(fltr_procedure == T) %>% 
   select.(fltr_fasciotomy, peds_adult_flag) %>% 
   ggplot(aes(x = fltr_fasciotomy, group = fltr_fasciotomy, label = ..count..)) +
   geom_bar(aes(y = ..count.., fill = factor(..x..)), stat = "count") +
   geom_text( stat= "count", vjust = -.5) +
-  ggdark::dark_theme_classic() +
+  ggthemes::theme_stata() +
+  # ggdark::dark_theme_classic() +
   ggsci::scale_fill_jco() +
   labs(title = "Class Imbalance for Fasciotomy",
          y = "Count of Patients",
          x = 'Patients That Had Fasciotomy') +
   theme(axis.text.y=element_text(angle=0, hjust=1), legend.position = "none") +
   scale_x_discrete(labels = function(x) str_wrap(x, width = 30)) +
+  ylim(0,20000) +
   facet_wrap(~peds_adult_flag)
+
+
+  ggsave(filename = "class_imbalance.png" ,
+         plot = class_imbalance_graph, 
+         width = 8,
+         height = 4,
+         dpi = 600, 
+         path = paste0(getwd(),"/images/"))
 
 ```
 

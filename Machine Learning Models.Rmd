@@ -170,34 +170,34 @@ xgb_model <- boost_tree(mtry = .7,
   set_engine("xgboost", nthread = 6) %>%
   fit(fltr_fasciotomy ~ . -id, data = train_data)
 
-# ## LOGISTIC REGRESSION
-# glm_model <-
-#   logistic_reg(mode = "classification") %>%
-#   set_engine("glm") %>%
-#   fit(fltr_fasciotomy ~ ., data = train_data)
-# 
-# ## NEURAL NETWORK
-# set.seed(579)
-# nnet_model <- mlp(epochs = 100, hidden_units = 5, dropout = 0.1) %>%
-#   set_mode("classification") %>% 
-#   # Also set engine-specific `verbose` argument to prevent logging the results: 
-#   set_engine("keras", verbose = 0) %>%
-#   fit(fltr_fasciotomy ~ ., data = train_data)
-# 
-# ## RIDGE
-# ridge_model <- logistic_reg(penalty = tune(), mixture = tune()) %>% # Specify hyperparameters to "tune"
-#   set_engine("glmnet")
-# 
-# best_parameters <- ridge_model %>%
-#   tune_grid(fltr_fasciotomy ~ .,
-#             resamples = vfold_cv(train_data, 5), # Specify folds
-#             grid = expand_grid(penalty = c(0, .1, 1, 10, 1000), # Specify grid to tune
-#                                mixture = c(0, .2, .4, .8))) %>%
-#   select_best(metric = "roc_auc") # Extract best parameters based on a metric
-# 
-# ridge_model <- ridge_model %>%
-#   finalize_model(best_parameters) %>% # Update model with best parameters
-#   fit(fltr_fasciotomy ~ ., data = train_data) # Fit model using best parameters
+## LOGISTIC REGRESSION
+glm_model <-
+  logistic_reg(mode = "classification") %>%
+  set_engine("glm") %>%
+  fit(fltr_fasciotomy ~ . -id, data = train_data)
+
+## NEURAL NETWORK
+set.seed(579)
+nnet_model <- mlp(epochs = 100, hidden_units = 5, dropout = 0.1) %>%
+  set_mode("classification") %>%
+  # Also set engine-specific `verbose` argument to prevent logging the results:
+  set_engine("keras", verbose = 0) %>%
+  fit(fltr_fasciotomy ~ . -id, data = train_data)
+
+## RIDGE
+ridge_model <- logistic_reg(penalty = tune(), mixture = tune()) %>% # Specify hyperparameters to "tune"
+  set_engine("glmnet")
+
+best_parameters <- ridge_model %>%
+  tune_grid(fltr_fasciotomy ~ . -id,
+            resamples = vfold_cv(train_data, 5), # Specify folds
+            grid = expand_grid(penalty = c(0, .1, 1, 10, 1000), # Specify grid to tune
+                               mixture = c(0, .2, .4, .8))) %>%
+  select_best(metric = "roc_auc") # Extract best parameters based on a metric
+
+ridge_model <- ridge_model %>%
+  finalize_model(best_parameters) %>% # Update model with best parameters
+  fit(fltr_fasciotomy ~ . -id, data = train_data) # Fit model using best parameters
 
 
 ```
@@ -208,6 +208,9 @@ xgb_model <- boost_tree(mtry = .7,
 # save the model to disk
 saveRDS(rf_model, "E:/Northwestern/12 - Capstone/PTOS_Data/rf_model.rds")
 saveRDS(xgb_model, "E:/Northwestern/12 - Capstone/PTOS_Data/xgb_model.rds")
+saveRDS(glm_model, "E:/Northwestern/12 - Capstone/PTOS_Data/glm_model.rds")
+saveRDS(nnet_model, "E:/Northwestern/12 - Capstone/PTOS_Data/nnet_model.rds")
+saveRDS(ridge_model, "E:/Northwestern/12 - Capstone/PTOS_Data/ridge_model.rds")
 
 ```
 
@@ -221,25 +224,25 @@ saveRDS(xgb_model, "E:/Northwestern/12 - Capstone/PTOS_Data/xgb_model.rds")
 train_pred_df <- train_data %>% 
   select(fltr_fasciotomy) %>%
   bind_cols(predict(rf_model, train_data) %>% rename(rf = .pred_class),
-            predict(xgb_model, train_data) %>% rename(xgb = .pred_class)
-            # predict(glm_model, train_data) %>% rename(glm = .pred_class),
-            # predict(nnet_model, train_data) %>% rename(nnet = .pred_class),
-            # predict(ridge_model, train_data) %>% rename(ridge = .pred_class)
+            predict(xgb_model, train_data) %>% rename(xgb = .pred_class),
+            predict(glm_model, train_data) %>% rename(glm = .pred_class),
+            predict(nnet_model, train_data) %>% rename(nnet = .pred_class),
+            predict(ridge_model, train_data) %>% rename(ridge = .pred_class)
             )
 
 # Get predictions
 test_pred_df <- test_data %>%
   select(fltr_fasciotomy) %>%
   bind_cols(predict(rf_model, test_data) %>% rename(rf = .pred_class),
-            predict(xgb_model, test_data) %>% rename(xgb = .pred_class)
-            # predict(glm_model, test_data) %>% rename(glm = .pred_class),
-            # predict(nnet_model, test_data) %>% rename(nnet = .pred_class),
-            # predict(ridge_model, test_data) %>% rename(ridge = .pred_class)
+            predict(xgb_model, test_data) %>% rename(xgb = .pred_class),
+            predict(glm_model, test_data) %>% rename(glm = .pred_class),
+            predict(nnet_model, test_data) %>% rename(nnet = .pred_class),
+            predict(ridge_model, test_data) %>% rename(ridge = .pred_class)
             )
 
 
 # Check accuracy
-train_pred_df %>%
+train_accuracy_results <- train_pred_df %>%
   pivot_longer(-fltr_fasciotomy, names_to = "model", values_to = "pred") %>%
   group_by(model) %>%
   summarize( f_score = f_meas_vec(fltr_fasciotomy, pred), 
@@ -247,15 +250,15 @@ train_pred_df %>%
              false_positive = npv_vec(fltr_fasciotomy, pred), 
              sensitivity = sensitivity_vec(fltr_fasciotomy, pred),
              specificity = specificity_vec(fltr_fasciotomy, pred),
-             prevalance = detection_prevalence_vec(fltr_fasciotomy, pred),
-             recall = recall_vec(fltr_fasciotomy, pred),
+             # prevalance = detection_prevalence_vec(fltr_fasciotomy, pred),
+             # recall = recall_vec(fltr_fasciotomy, pred),
              precision = precision_vec(fltr_fasciotomy, pred))%>% 
   arrange(f_score)
 
 
 
 # Check accuracy
-test_pred_df %>%
+test_accuracy_results <- test_pred_df %>%
   pivot_longer(-fltr_fasciotomy, names_to = "model", values_to = "pred") %>%
   group_by(model) %>%
   summarize(f_score = f_meas_vec(fltr_fasciotomy, pred), 
@@ -263,12 +266,52 @@ test_pred_df %>%
             false_positive = npv_vec(fltr_fasciotomy, pred), 
             sensitivity = sensitivity_vec(fltr_fasciotomy, pred),
             specificity = specificity_vec(fltr_fasciotomy, pred),
-            prevalance = detection_prevalence_vec(fltr_fasciotomy, pred),
-            recall = recall_vec(fltr_fasciotomy, pred),
+            # prevalance = detection_prevalence_vec(fltr_fasciotomy, pred),
+            # recall = recall_vec(fltr_fasciotomy, pred),
             precision = precision_vec(fltr_fasciotomy, pred)
             ) %>% 
   arrange(f_score)
 ```
+
+
+```{r build_viz_for_presentation}
+
+gt_train_graph <- train_accuracy_results %>% 
+  gt() %>% 
+    tab_header(title = md("In-Sample Model Accuracy"),
+               subtitle = md("Fasciotomy ~ .")) %>% 
+  cols_width(everything() ~ px(100)) %>%
+  fmt_percent(columns = vars(f_score, true_positive, false_positive, sensitivity, specificity, precision), 
+              decimals = 1)
+
+gt_train_graph %>% 
+  gtsave(paste0(expr(gt_train_graph),".png") , expand = 10,
+    path = paste0(getwd(),"/images/")
+  )
+
+gt_test_graph <- test_accuracy_results %>% 
+  gt() %>% 
+    tab_header(title = md("Out-of-Sample Model Accuracy"),
+               subtitle = md("Fasciotomy ~ .")) %>% 
+  cols_width(everything() ~ px(100)) %>%
+  fmt_percent(columns = vars(f_score, true_positive, false_positive, sensitivity, specificity, precision), 
+              decimals = 1)
+
+gt_test_graph %>% 
+  gtsave(paste0(expr(gt_test_graph),".png") , expand = 10,
+    path = paste0(getwd(),"/images/")
+  )
+
+
+
+
+
+
+
+```
+
+
+
 
 # Results from Shiny Application
 
@@ -312,7 +355,7 @@ for(d in dfs) {
 
 
 
-```{r}
+```{r variable_importance_rf}
 # Find important words
 importance_df <- rf_model$fit$variable.importance %>%
   enframe(name = "variable", value = "importance") %>%
@@ -326,35 +369,30 @@ variable_list <- importance_df %>%
   arrange(importance) %>%
   pull(variable)
 
-
-
-    
-
-my_df <- tibble(id = '00000000000000',
-                fltr_fasciotomy = 'TRUE',
-                code_desc  = 'Oth MVA N-traffic Collision,Move Object - Motorcyclist',
-                subchapter_desc = 'Reduction of fracture and dislocation',
-                sex = 'Female',
-                race = 'White',
-                age_in_yrs = 30, 
-                cause_of_injury_e_code = 'Oth MVA N-traffic Collision,Move Object - Motorcyclist', 
-                place_of_injury = 'Home'
-)
+rf_vip <- vip::vip(rf_model$fit,num_features = 15) +
+  ggthemes::theme_stata() + 
+  scale_x_discrete(labels = function(x) str_wrap(janitor::make_clean_names(sub('.*\\_', '',x),
+                                                                           case = "title"), width = 70)) +
+  theme(axis.text.y=element_text(angle=0, hjust=1)) +
+  labs(title = "Variable Importance for RandomForest")
   
+  
+  ggsave(filename = "rf_vip.png" ,
+         plot = rf_vip, 
+         width = 8,
+         height = 4,
+         dpi = 600, 
+         path = paste0(getwd(),"/images/"))
 
-prepped_df <- prep(rf_recipe) %>% bake( my_df)
 
-results <- predict(rf_model, my_df, type = "prob")
-
-results
-
-
-
+  
+  rf_vip
+  
 ```
 
 
 ```{r fig.height=10}
-vip::vip(rf_model$fit,num_features = 15)
+
 
 
 xgb_model

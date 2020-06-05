@@ -135,14 +135,11 @@ Identify the likelihood of <em> compartment syndrome </em> in pediatric patients
 
 ## Data Preparation: traumaR
 
-<div style="position:absolute; top: 10px; right: 30px">
+<div style="position:absolute; top: 30px; right: 30px">
 
-<img src="images/logo.png" width="175px" align="right">
+<img src="images/logo.png" width="75px">
 
 </div>
-
-
-<br>
 
 - Developed a custom R package to translate all medical codes into human friendly terms
   - Wrote over 50 functions to automate this work and make it repeatable
@@ -158,6 +155,22 @@ Identify the likelihood of <em> compartment syndrome </em> in pediatric patients
 # Exploratory Data Analysis
 
 ## EDA: Patient 
+
+<!-- Package Stickers  -->
+
+<div style="position:absolute; top: 30px; right: 125px">
+
+<img src="images/r_dplyr_logo.png" width="75px" >
+
+</div>
+
+<div style="position:absolute; top: 30px; right: 30px">
+
+<img src="images/r_ggplot_logo.png" width="75px" >
+
+</div>
+
+
 
 <!-- Top Left -->
 
@@ -194,6 +207,21 @@ Identify the likelihood of <em> compartment syndrome </em> in pediatric patients
 
 ## EDA: Forearm Fractures
 
+<!-- Package Stickers  -->
+
+<div style="position:absolute; top: 30px; right: 125px">
+
+<img src="images/r_dplyr_logo.png" width="75px" >
+
+</div>
+
+<div style="position:absolute; top: 30px; right: 30px">
+
+<img src="images/r_ggplot_logo.png" width="75px" >
+
+</div>
+
+
 <!-- Top Left -->
 
 <div style="position:absolute; top: 130px; left: 30px">
@@ -228,7 +256,22 @@ Identify the likelihood of <em> compartment syndrome </em> in pediatric patients
 </div>
 
 
-## EDA: Fasciotomy 
+## EDA: Fasciotomy
+
+<!-- Package Stickers  -->
+
+<div style="position:absolute; top: 30px; right: 125px">
+
+<img src="images/r_dplyr_logo.png" width="75px" >
+
+</div>
+
+<div style="position:absolute; top: 30px; right: 30px">
+
+<img src="images/r_ggplot_logo.png" width="75px" >
+
+</div>
+
 
 <!-- Top Left -->
 
@@ -264,43 +307,140 @@ Identify the likelihood of <em> compartment syndrome </em> in pediatric patients
 </div>
 
 
-## EDA: Compartment Syndrome vs. Fasciotomy
+## EDA: Fasciotomy Results
 
-<br>
-<center>
-![](images/gt_graph_3.png){width=750px}
-</center>
+<!-- Package Stickers  -->
 
+<div style="position:absolute; top: 30px; right: 30px">
 
-## EDA: Forearm Fracture Results
-
-<div style="float: left; width: 60%;">
-![](images/gt_graph_4.png){width=600px}
-</div>
-
-<div style="float: right; width: 35%; font-size: 20px">
-- The Open Reduction with Internal Fixation is the most common technique across the nation
-  - PTOS data show similar results 
-- Pediatric patients tend to be treated with Closed Reduction and casting
-  - Most of the injuries result from falling on the playground or at home
-  - These fractures are usually less traumatic and do not require invasive techniques
+<img src="images/r_gt_logo.png" width="75px" >
 
 </div>
 
-## Fasciotomy Results in PTOS Data
+
 <center>
 ![](images/gt_graph_1.png){width=1000px}
 </center>
+<div style="font-size: 18px">
+
+- The Open Reduction with Internal Fixation is the most common technique across the nation
 
 ## EDA: Fasciotomy Results 
 
-<center>
-![](images/gt_graph_2.png){width=700px}
-</center>
+<!-- Package Stickers  -->
+
+<div style="position:absolute; top: 30px; right: 30px">
+
+<img src="images/r_gt_logo.png" width="75px" >
+
+</div>
+
+<div style="float: left; width: 65%;"> 
+![](images/gt_graph_2.png){width=650px}
+</div>
+
+<div style="float: right; width: 30%; font-size: 16px"> 
+- Pediatric patients tend to be treated with Closed Reduction and casting
+  - Most of the injuries result from falling on the playground or at home
+  - These fractures are usually less traumatic and do not require invasive techniques 
+  - This
+
+
+</div>
 
 # Modeling
 
+## Predicting Fasciotomy
 
+<center>
+![](images/model_building.png){width=900px}
+</center>
+
+## Model Pre-Processing
+<center>
+![](images/class_imbalance.png){width=750px}
+</center>
+
+## Feature Engineering
+
+<!-- Package Stickers  -->
+
+<div style="position:absolute; top: 30px; right: 20px">
+
+<img src="images/r_recipes_logo.png" width="105px" >
+
+</div>
+
+<!-- Package Stickers  -->
+
+- Step Other 
+  - Groups categorical information into ‘other’ category whose individual levels do not exceed preset threshold. 
+- Step Dummy
+  - Converts character or factors into dummy variables
+- Step Zero Variance
+  - Removes variables that contain only a single value
+    - This is a precautionary step to ensure that Step Other captured all low occurrence into ‘Other’
+- Step Omit NA
+  - Remove any observations with missing values
+  - Some models cannot handle missing values
+
+## Models Deployed
+
+<!-- Package Stickers  -->
+
+<div style="position:absolute; top: 30px; right: 30px">
+
+<img src="images/r_parsnip_logo.png" width="90px" >
+
+</div>
+
+<div style="position:absolute; top: 30px; right: 140px">
+
+<img src="images/r_tidymodels_logo.png" width="90px" >
+
+</div>
+
+<!-- Package Stickers  -->
+
+## Model Results: In-Sample Accuracy
+
+<!-- Package Stickers  -->
+
+<div style="position:absolute; top: 30px; right: 30px">
+
+<img src="images/r_yardstick_logo.png" width="90px" >
+
+</div>
+
+<!-- Package Stickers  -->
+
+<center>
+![](images/gt_train_graph.png){width=750px}
+
+</center>
+
+## Model Results: Out-of-Sample Accuracy
+
+<!-- Package Stickers  -->
+
+<div style="position:absolute; top: 30px; right: 30px">
+
+<img src="images/r_yardstick_logo.png" width="90px" >
+
+</div>
+
+<!-- Package Stickers  -->
+
+<center>
+![](images/gt_test_graph.png){width=750px}
+</center>
+
+
+## RandomForest Variable Importance
+
+<center>
+![](images/rf_vip.png){width=750px}
+</center>
 
 # Predictions
 
