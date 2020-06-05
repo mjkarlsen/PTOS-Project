@@ -348,6 +348,19 @@ Identify the likelihood of <em> compartment syndrome </em> in pediatric patients
 
 </div>
 
+## Association Analysis of Medical Procedures
+
+<div style="position:absolute; top: 100px; left: 60px">
+
+<img src="images/association_analysis.png" width="900px" >
+
+
+<div style="float: left; width: 100%; font-size: 14px"> 
+- The red lines represent common paths in the series of procedures that led to a fasciotomy. 
+- Removed CAT scans (87.03, 87.41, 87.71, 88.01, 88.38), and suture code (83.65) procedures as they made up a majority of the relationships. 
+  - The number of CAT scans were related to the severity of the injury and suturing is just part of the everyday surgery.
+</div>
+
 # Modeling
 
 ## Predicting Fasciotomy
@@ -373,14 +386,14 @@ Identify the likelihood of <em> compartment syndrome </em> in pediatric patients
 
 <!-- Package Stickers  -->
 
-- Step Other 
+- <b>Step Other </b>
   - Groups categorical information into ‘other’ category whose individual levels do not exceed preset threshold. 
-- Step Dummy
+- <b>Step Dummy </b>
   - Converts character or factors into dummy variables
-- Step Zero Variance
+- <b>Step Zero Variance </b>
   - Removes variables that contain only a single value
     - This is a precautionary step to ensure that Step Other captured all low occurrence into ‘Other’
-- Step Omit NA
+- <b>Step Omit NA </b>
   - Remove any observations with missing values
   - Some models cannot handle missing values
 
@@ -400,6 +413,12 @@ Identify the likelihood of <em> compartment syndrome </em> in pediatric patients
 
 </div>
 
+<br>
+
+<center>
+![](images/model_specs.png){width=1000px}
+
+</center>
 <!-- Package Stickers  -->
 
 ## Model Results: In-Sample Accuracy
@@ -442,10 +461,33 @@ Identify the likelihood of <em> compartment syndrome </em> in pediatric patients
 ![](images/rf_vip.png){width=750px}
 </center>
 
-# Predictions
-
-
-
 # Visualization
 
-https://mjkarlsen.shinyapps.io/Compartment_Syndrome/
+## Shiny Dashboard: Web Version
+
+<!-- Package Stickers  -->
+
+<div style="position:absolute; top: 30px; right: 30px">
+
+<img src="images/r_shiny_logo.png" width="90px" >
+
+</div>
+
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/yDhTCz9Dr1I" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+
+
+## Shiny Dashboard: Phone Application
+
+
+<!-- Package Stickers  -->
+
+<div style="position:absolute; top: 30px; right: 30px">
+
+<img src="images/r_shiny_logo.png" width="90px" >
+
+</div>
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/bnNH4cMvgas" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+
+

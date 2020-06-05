@@ -164,8 +164,9 @@ xgb_model <- boost_tree(mtry = .7,
                         trees = 200,
                         learn_rate = .02,
                         loss_reduction = 0,
-                        tree_depth = 20 ,
-                        sample_size = 1) %>%
+                        tree_depth = 20, 
+                        sample_size = 1
+  ) %>%
   set_mode("classification") %>%
   set_engine("xgboost", nthread = 6) %>%
   fit(fltr_fasciotomy ~ . -id, data = train_data)
@@ -212,8 +213,14 @@ saveRDS(glm_model, "E:/Northwestern/12 - Capstone/PTOS_Data/glm_model.rds")
 saveRDS(nnet_model, "E:/Northwestern/12 - Capstone/PTOS_Data/nnet_model.rds")
 saveRDS(ridge_model, "E:/Northwestern/12 - Capstone/PTOS_Data/ridge_model.rds")
 
+
 ```
 
+
+```{r}
+nnet_model
+
+```
 
 
 
