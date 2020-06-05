@@ -133,7 +133,9 @@ Identify the likelihood of <em> compartment syndrome </em> in pediatric patients
 
 # Data Preparation
 
-## Data Preparation: traumaR
+## Data Preparation
+
+<!-- Package Stickers  -->
 
 <div style="position:absolute; top: 30px; right: 30px">
 
@@ -141,7 +143,16 @@ Identify the likelihood of <em> compartment syndrome </em> in pediatric patients
 
 </div>
 
-- Developed a custom R package to translate all medical codes into human friendly terms
+<div style="position:absolute; top: 30px; right: 125px">
+
+<img src="images/r_tidytable_logo.png" width="75px" >
+
+</div>
+
+
+<!-- Package Stickers  -->
+
+- Developed a custom R package, called <b> traumaR </b> to translate all medical codes into human friendly terms
   - Wrote over 50 functions to automate this work and make it repeatable
 - PTOS Data consists of 530k anonymized patient records and 1,400 columns
   - Columns mostly consisting of medical codes which required translation
@@ -323,7 +334,7 @@ Identify the likelihood of <em> compartment syndrome </em> in pediatric patients
 </center>
 <div style="font-size: 18px">
 
-- The Open Reduction with Internal Fixation is the most common technique across the nation
+<em> The Open Reduction with Internal Fixation is the most common technique across the medical field </em>
 
 ## EDA: Fasciotomy Results 
 
@@ -339,11 +350,14 @@ Identify the likelihood of <em> compartment syndrome </em> in pediatric patients
 ![](images/gt_graph_2.png){width=650px}
 </div>
 
+<br>
+<br>
+
 <div style="float: right; width: 30%; font-size: 16px"> 
 - Pediatric patients tend to be treated with Closed Reduction and casting
   - Most of the injuries result from falling on the playground or at home
   - These fractures are usually less traumatic and do not require invasive techniques 
-  - This
+
 
 
 </div>
@@ -373,6 +387,15 @@ Identify the likelihood of <em> compartment syndrome </em> in pediatric patients
 <center>
 ![](images/class_imbalance.png){width=750px}
 </center>
+
+
+<div style="font-size: 18px">
+- Up-sampled the minority class in training data
+  - Fasciotomy == TRUE
+- Use F-Measure as measure of model accuracy
+  - F-Measure combines precision and recall into a single score
+  - Highly recommended for imbalanced classifications 
+</div>
 
 ## Feature Engineering
 
@@ -457,9 +480,36 @@ Identify the likelihood of <em> compartment syndrome </em> in pediatric patients
 
 ## RandomForest Variable Importance
 
-<center>
-![](images/rf_vip.png){width=750px}
-</center>
+<!-- Package Stickers  -->
+
+<div style="position:absolute; top: 30px; right: 30px">
+
+<img src="images/r_vip_logo.png" width="100px" >
+
+</div>
+
+<!-- Package Stickers  -->
+
+<div style="float: left; width: 60%"> 
+![](images/rf_vip.png){width=600px, height=500px}
+</div>
+
+<div style="float: right; width: 35%; font-size: 16px"> 
+<br>
+
+<b> Variable Importance </b>
+
+- Specific Types of Injuries
+  - Fall from Stairs, Motor Vehicles, Motorcyclist, Firearm Explosives
+- Location of Injury
+  - Home, Street/Highway
+- Patient Demographics
+  - Male, White, and Age 22
+- Medical Procedure
+  - Operations on Skin and Subcutaneous Tissue
+
+
+</div>
 
 # Visualization
 
