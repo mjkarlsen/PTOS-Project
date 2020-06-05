@@ -217,14 +217,6 @@ saveRDS(ridge_model, "E:/Northwestern/12 - Capstone/PTOS_Data/ridge_model.rds")
 ```
 
 
-```{r}
-nnet_model
-
-```
-
-
-
-
 ```{r prediction_results}
 
 # Get predictions
@@ -310,12 +302,8 @@ gt_test_graph %>%
   )
 
 
-
-
-
-
-
 ```
+
 
 
 
@@ -323,6 +311,9 @@ gt_test_graph %>%
 # Results from Shiny Application
 
 ```{r}
+
+rf_model <- readRDS(file = 'E:/Northwestern/12 - Capstone/PTOS_Data/rf_model.rds')
+
 
 rf_pred <-
     predict(rf_model, full_data, type = "prob") %>%
@@ -337,7 +328,6 @@ rf_model_results <- rf_pred %>%
                pred_true_max = max(.pred_TRUE),
                by = c(id, fltr_fasciotomy)) %>%
     arrange(-pred_true)
-
 
 patient_rf <- rf_model_results %>%
     inner_join.(patient_df %>%
@@ -397,142 +387,37 @@ rf_vip <- vip::vip(rf_model$fit,num_features = 15) +
   
 ```
 
-
-```{r fig.height=10}
-
-
-
-xgb_model
-
-```
-
-
-```{r}
-xgb_spec <- boost_tree(
-  trees = 1000, 
-  tree_depth = tune(), min_n = tune(), 
-  loss_reduction = tune(),                     ## first three: model complexity
-  sample_size = tune(), mtry = tune(),         ## randomness
-  learn_rate = tune(),                       ## step size
-) %>% 
-  set_engine("xgboost", nthread = 6) %>% 
-  set_mode("classification")
-
-xgb_spec
-
-
-xgb_grid <- grid_regular(
-  tree_depth(),
-  min_n(),
-  loss_reduction(),
-  sample_size = sample_prop(),
-  finalize(mtry(), train_data),
-  learn_rate()
-)
-
-xgb_grid
-
-
-xgb_wf <- workflow() %>%
-  add_formula(fltr_fasciotomy ~  .) %>%
-  add_model(xgb_spec)
-
-xgb_wf
-
-
-set.seed(123)
-vb_folds <- vfold_cv(train_data, v = 5, strata = fltr_fasciotomy)
-
-vb_folds
-
-
-doParallel::registerDoParallel()
-
-set.seed(234)
-xgb_res <- tune_grid(
-  xgb_wf,
-  resamples = vb_folds,
-  grid = xgb_grid,
-  control = control_grid(save_pred = TRUE)
-)
-
-xgb_res
-
-
-collect_metrics(xgb_res)
-
-
-xgb_res %>%
-  collect_metrics() %>%
-  filter(.metric == "roc_auc") %>%
-  select(mean, mtry:sample_size) %>%
-  pivot_longer(mtry:sample_size,
-               values_to = "value",
-               names_to = "parameter"
-  ) %>%
-  ggplot(aes(value, mean, color = parameter)) +
-  geom_point(alpha = 0.8, show.legend = FALSE) +
-  facet_wrap(~parameter, scales = "free_x") +
-  labs(x = NULL, y = "AUC")
-
-
-show_best(xgb_res, "roc_auc")
-
-best_auc <- select_best(xgb_res, "roc_auc")
-best_auc
-
-
-final_xgb <- finalize_workflow(
-  xgb_wf,
-  best_auc
-)
-
-final_xgb
-
-
-final_xgb %>%
-  fit(data = train_data) %>%
-  pull_workflow_fit() %>%
-  vip(geom = "point")
-
-
-final_res <- last_fit(final_xgb, train_test_split)
-
-collect_metrics(final_res)
-
-
-final_res %>%
-  collect_predictions() %>%
-  roc_curve(fltr_fasciotomy, .pred_win) %>%
-  ggplot(aes(x = 1 - specificity, y = sensitivity)) +
-  geom_line(size = 1.5, color = "midnightblue") +
-  geom_abline(
-    lty = 2, alpha = 0.5,
-    color = "gray50",
-    size = 1.2
-  )
-
-
-# doParallel::stopImplicitCluster()
-
-```
-
-
-
 ```{r}
 
-# Find important words
-importance_df <- rf_all_model$fit$variable.importance %>%
-  enframe(name = "variable", value = "importance") %>%
-  mutate(importance = rescale(importance)) %>%
-  mutate_if(is.double, ~round(.x, 4)) %>%
-  arrange(-importance)
+library(precrec)
 
-# Get vec of important words
-variable_list <- importance_df %>%
-  filter(importance > .02) %>%
-  arrange(importance) %>%
-  pull(variable)
+rf_prediction <- test_pred_df %>% 
+  mutate(.act_class = (ifelse(fltr_fasciotomy == T, 1, 0)), 
+         .pred_class = (ifelse(rf == T, 1, 0)))
 
-vip::vip(rf_all_model$fit, num_features = 15)
+roc_data <- rf_prediction #%>% filter(peds_adult_flag == "Adult")
+
+sscurves <- evalmod(scores = roc_data$.act_class, labels = roc_data$.pred_class )
+
+plot(sscurves)
+
+
+
+smcurves <- evalmod(scores = roc_data$.act_class, labels = roc_data$.pred_class, x_bins = 100)
+
+autoplot(smcurves)
+
+aucs <- evalmod(scores = roc_data$.act_class, labels = roc_data$.pred_class, mode = 'aucroc')
+# Convert to data.frame
+aucs.df <- as.data.frame(aucs)
+
+# Use knitr::kable to display the result in a table format
+knitr::kable(aucs.df)
+
+
+auc_ci <- auc_ci(smcurves)
+
+# Use knitr::kable to display the result in a table format
+knitr::kable(auc_ci)
 ```
+
