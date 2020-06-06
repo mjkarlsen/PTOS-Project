@@ -5,7 +5,8 @@ output: html_notebook
 
 ```{r}
 pacman::p_load(doParallel, 
-               tensorflow)
+               tensorflow, 
+               precrec)
 
 # install_tensorflow()
 ```
@@ -396,19 +397,7 @@ rf_vip <- vip::vip(rf_model$fit,num_features = 15) +
   
 ```
 
-```{r}
-
-library(precrec)
-
-rf_prediction <- test_pred_df %>% 
-  mutate(.act_class = (ifelse(fltr_fasciotomy == T, 1, 0)), 
-         .pred_class = (ifelse(rf == T, 1, 0)))
-
-roc_data <- rf_prediction #%>% filter(peds_adult_flag == "Adult")
-
-sscurves <- evalmod(scores = roc_data$.act_class, labels = roc_data$.pred_class )
-
-plot(sscurves, "PRC")
+```{r roc_auc}
 
 
 
@@ -417,29 +406,119 @@ plot(sscurves, "PRC")
 
 
 
-Losmcurves <- evalmod(scores = roc_data$.act_class, labels = roc_data$.pred_class, x_bins = 100)
-
-autoplot(smcurves)
-
-aucs <- evalmod(scores = roc_data$.act_class, labels = roc_data$.pred_class, mode = 'aucroc')
-# Convert to data.frame
-aucs.df <- as.data.frame(aucs)
-
-# Use knitr::kable to display the result in a table format
-knitr::kable(aucs.df)
-
-
-auc_ci <- auc_ci(smcurves)
-
-# Use knitr::kable to display the result in a table format
-knitr::kable(auc_ci)
-```
-
-```{r}
-roc_results <- test_pred_df %>% 
+roc_results <- train_pred_df %>% 
   mutate_across.(is.factor, ~ifelse(.x == T, 1, 0))
 
-roc_results
+
+s1 <- roc_results$rf
+s2 <- roc_results$xgb
+s3 <- roc_results$glm
+s4 <- roc_results$nnet
+s5 <- roc_results$ridge
+
+scores <- join_labels(s1, s2, s3, s4, s5)
+
+l1 <- roc_results$fltr_fasciotomy
+l2 <- l1
+l3 <- l1
+l4 <- l1
+l5 <- l1
+
+labels <- join_labels(l1, l2, l3, l4, l5)
+
+model_names <- c("rf", "xgb", "glm", "nnet", "ridge")
+
+
+
+mmdata_results <- mmdata(scores, labels, modnames = model_names)
+
+mmcurves <- evalmod(mmdata_results, raw_curves = TRUE)
+
+autoplot(mmcurves)
+
+
+aucs <- evalmod(scores = scores, labels = labels, modnames = model_names, mode = 'aucroc')
+
+# Convert to data.frame
+aucs.df <- as.data.frame(aucs) %>% 
+  rename(test_auc = aucs)
+
+aucs.df %>% 
+  select(modnames, aucs) %>% 
+  arrange(-aucs) %>% 
+  gt() %>% 
+  tab_header(title = md("Area Under the Curve (AUC) Scores"),
+             subtitle = md("Train vs. Test")) %>% 
+  fmt_percent(vars(aucs), 
+              decimals = 2)
+
 ```
 
+```{r}
+
+roc_function <- function(.data) {
+  roc_results <- .data %>% 
+    mutate_across.(is.factor, ~ifelse(.x == T, 1, 0))
+  
+  s1 <- roc_results$rf
+  s2 <- roc_results$xgb
+  s3 <- roc_results$glm
+  s4 <- roc_results$nnet
+  s5 <- roc_results$ridge
+  
+  scores <- join_labels(s1, s2, s3, s4, s5)
+  
+  l1 <- roc_results$fltr_fasciotomy
+  l2 <- l1
+  l3 <- l1
+  l4 <- l1
+  l5 <- l1
+  
+  labels <- join_labels(l1, l2, l3, l4, l5)
+  
+  model_names <- c("rf", "xgb", "glm", "nnet", "ridge")
+  
+  results <- mmdata(scores, labels, modnames = model_names)
+  
+  return(results)
+  
+}
+
+
+roc_test <- roc_function(test_pred_df)
+roc_train <- roc_function(train_pred_df)
+
+curves_test <- evalmod(roc_test, raw_curves = TRUE)
+curves_train <- evalmod(roc_train, raw_curves = TRUE)
+
+autoplot(curves_test)
+autoplot(curves_train)
+
+#################################################################
+# AUC SCORES
+#################################################################
+
+test_auc <- evalmod(roc_test, mode = 'aucroc') %>% as.data.frame()
+train_auc <- evalmod(roc_train, mode = 'aucroc') %>% as.data.frame()
+
+total_auc <- test_auc %>% 
+  left_join(train_auc, by = "modnames") %>% 
+  select(modnames, aucs.y, aucs.x) %>% 
+  rename(Model_Names = modnames, 
+         Train_AUCS = aucs.y, 
+         Test_AUCS = aucs.x) %>% 
+  arrange(-Test_AUCS)
+
+total_auc %>% 
+  gt() %>% 
+  tab_header(title = md("Area Under the Curve (AUC) Scores"),
+             subtitle = md("Train vs. Test")) %>% 
+  fmt_percent(vars(Train_AUCS, Test_AUCS), 
+              decimals = 2) %>% 
+  cols_width(everything() ~ px(200)) %>% 
+  cols_align(align = "center")
+
+
+
+```
 
