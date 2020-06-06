@@ -214,6 +214,15 @@ saveRDS(nnet_model, "E:/Northwestern/12 - Capstone/PTOS_Data/nnet_model.rds")
 saveRDS(ridge_model, "E:/Northwestern/12 - Capstone/PTOS_Data/ridge_model.rds")
 
 
+# 
+# rf_model <- readRDS("E:/Northwestern/12 - Capstone/PTOS_Data/rf_model.rds")
+# xgb_model <- readRDS("E:/Northwestern/12 - Capstone/PTOS_Data/xgb_model.rds")
+# glm_model <- readRDS("E:/Northwestern/12 - Capstone/PTOS_Data/glm_model.rds")
+# nnet_model <- readRDS("E:/Northwestern/12 - Capstone/PTOS_Data/nnet_model.rds")
+# ridge_model <- readRDS("E:/Northwestern/12 - Capstone/PTOS_Data/ridge_model.rds")
+
+
+
 ```
 
 
@@ -399,11 +408,16 @@ roc_data <- rf_prediction #%>% filter(peds_adult_flag == "Adult")
 
 sscurves <- evalmod(scores = roc_data$.act_class, labels = roc_data$.pred_class )
 
-plot(sscurves)
+plot(sscurves, "PRC")
 
 
 
-smcurves <- evalmod(scores = roc_data$.act_class, labels = roc_data$.pred_class, x_bins = 100)
+
+
+
+
+
+Losmcurves <- evalmod(scores = roc_data$.act_class, labels = roc_data$.pred_class, x_bins = 100)
 
 autoplot(smcurves)
 
@@ -420,4 +434,12 @@ auc_ci <- auc_ci(smcurves)
 # Use knitr::kable to display the result in a table format
 knitr::kable(auc_ci)
 ```
+
+```{r}
+roc_results <- test_pred_df %>% 
+  mutate_across.(is.factor, ~ifelse(.x == T, 1, 0))
+
+roc_results
+```
+
 
