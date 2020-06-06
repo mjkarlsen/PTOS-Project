@@ -322,7 +322,7 @@ gt_test_graph %>%
 
 ```{r}
 
-rf_model <- readRDS(file = 'E:/Northwestern/12 - Capstone/PTOS_Data/rf_model.rds')
+# rf_model <- readRDS(file = 'E:/Northwestern/12 - Capstone/PTOS_Data/rf_model.rds')
 
 
 rf_pred <-
@@ -396,65 +396,9 @@ rf_vip <- vip::vip(rf_model$fit,num_features = 15) +
   rf_vip
   
 ```
+## ROC and AUC
 
-```{r roc_auc}
-
-
-
-
-
-
-
-
-roc_results <- train_pred_df %>% 
-  mutate_across.(is.factor, ~ifelse(.x == T, 1, 0))
-
-
-s1 <- roc_results$rf
-s2 <- roc_results$xgb
-s3 <- roc_results$glm
-s4 <- roc_results$nnet
-s5 <- roc_results$ridge
-
-scores <- join_labels(s1, s2, s3, s4, s5)
-
-l1 <- roc_results$fltr_fasciotomy
-l2 <- l1
-l3 <- l1
-l4 <- l1
-l5 <- l1
-
-labels <- join_labels(l1, l2, l3, l4, l5)
-
-model_names <- c("rf", "xgb", "glm", "nnet", "ridge")
-
-
-
-mmdata_results <- mmdata(scores, labels, modnames = model_names)
-
-mmcurves <- evalmod(mmdata_results, raw_curves = TRUE)
-
-autoplot(mmcurves)
-
-
-aucs <- evalmod(scores = scores, labels = labels, modnames = model_names, mode = 'aucroc')
-
-# Convert to data.frame
-aucs.df <- as.data.frame(aucs) %>% 
-  rename(test_auc = aucs)
-
-aucs.df %>% 
-  select(modnames, aucs) %>% 
-  arrange(-aucs) %>% 
-  gt() %>% 
-  tab_header(title = md("Area Under the Curve (AUC) Scores"),
-             subtitle = md("Train vs. Test")) %>% 
-  fmt_percent(vars(aucs), 
-              decimals = 2)
-
-```
-
-```{r}
+```{r auc_roc}
 
 roc_function <- function(.data) {
   roc_results <- .data %>% 
@@ -485,21 +429,56 @@ roc_function <- function(.data) {
 }
 
 
-roc_test <- roc_function(test_pred_df)
 roc_train <- roc_function(train_pred_df)
+roc_test <- roc_function(test_pred_df)
 
-curves_test <- evalmod(roc_test, raw_curves = TRUE)
 curves_train <- evalmod(roc_train, raw_curves = TRUE)
+curves_test <- evalmod(roc_test, raw_curves = TRUE)
 
-autoplot(curves_test)
-autoplot(curves_train)
+
+plot_roc_train <- autoplot(curves_train, curvetype = c("ROC")) 
+
+ ggsave(filename = "train_roc.png" ,
+         plot = plot_roc_train, 
+         width = 4,
+         height = 3,
+         dpi = 600, 
+         path = paste0(getwd(),"/images/"))
+ 
+plot_roc_train <- autoplot(curves_train, curvetype = c("PRC")) 
+
+ ggsave(filename = "train_prc.png" ,
+         plot = plot_roc_train, 
+         width = 4,
+         height = 3,
+         dpi = 600, 
+         path = paste0(getwd(),"/images/"))
+
+ 
+plot_roc_test <- autoplot(curves_test, curvetype = c("ROC"))
+ ggsave(filename = "test_roc.png" ,
+         plot = plot_roc_test, 
+         width = 4,
+         height = 3,
+         dpi = 600, 
+         path = paste0(getwd(),"/images/"))
+ 
+plot_roc_test <- autoplot(curves_test, curvetype = c("PRC"))
+ggsave(filename = "test_prc.png" ,
+         plot = plot_roc_test, 
+         width = 4,
+         height = 3,
+         dpi = 600, 
+         path = paste0(getwd(),"/images/"))
+
 
 #################################################################
 # AUC SCORES
 #################################################################
 
-test_auc <- evalmod(roc_test, mode = 'aucroc') %>% as.data.frame()
+
 train_auc <- evalmod(roc_train, mode = 'aucroc') %>% as.data.frame()
+test_auc <- evalmod(roc_test, mode = 'aucroc') %>% as.data.frame()
 
 total_auc <- test_auc %>% 
   left_join(train_auc, by = "modnames") %>% 
@@ -516,7 +495,8 @@ total_auc %>%
   fmt_percent(vars(Train_AUCS, Test_AUCS), 
               decimals = 2) %>% 
   cols_width(everything() ~ px(200)) %>% 
-  cols_align(align = "center")
+  cols_align(align = "center") %>% 
+  gtsave("auc_results.png" , expand = 10, path = paste0(getwd(),"/images/"))
 
 
 

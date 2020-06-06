@@ -175,21 +175,16 @@ matt_theme <- function (base_size = 11, base_family = "", base_line_size = base_
 
 ```{r fig.width=12}
 patient_periods %>%
-  select.(sex, total_stay_time, fltr_fasciotomy, race) %>%
-  mutate(
-    total_stay_hr = as.numeric(total_stay_time, "hours"),
-    total_stay_hr = ifelse.(is.na(total_stay_hr), 0 , total_stay_hr), 
-    total_stay_bins = ntile(total_stay_hr, 2)
-  ) %>%
+  select.(sex, forearm_fx_desc, fltr_fasciotomy, race) %>%
   drop_na.() %>%
   summarize.(freq = n.(),
-             by = c(sex, fltr_fasciotomy, total_stay_bins, race)) %>%  #, injury_desc, fltr_complication, fltr_diagnosis, fltr_procedure, fltr_fasciotomy)) %>%
+             by = c(sex, fltr_fasciotomy, forearm_fx_desc, race)) %>% 
   filter.(sex %in% c('MALE', 'FEMALE')) %>% 
   ggplot(aes(
     y = freq,
-    axis1 = race,
-    axis2 = sex,
-    axis3 = total_stay_bins, 
+    axis1 = sex,
+    axis2 = forearm_fx_desc,
+    axis3 = race, 
     axis4 = fltr_fasciotomy
   )) +
   geom_alluvium(aes(fill = fltr_fasciotomy), width = 1/8) +
@@ -197,16 +192,22 @@ patient_periods %>%
                fill = "black",
                color = "grey") +
   geom_label(stat = "stratum", infer.label = TRUE) +
-  scale_x_discrete(limits = c("sex", "total_stay_bins", "race", "fltr_fasciotomy"),
+
+  scale_x_discrete(limits = c("Gender", "Forearm Fracture", "Race", "Fasciotomy"),
                    expand = c(.05, .05)) +
   scale_y_continuous(trans='log2') +
   scale_fill_brewer(type = "qual", palette = "Set1") +
   matt_theme() +
-  theme(legend.position = "bottom") 
+  theme(legend.position = "None", 
+        axis.text.y = element_blank()) +
+  labs(title = "Predicting Fasciotomy")
   
-patient_periods %>% 
-  filter(fltr_fasciotomy == T) %>% 
-  count(sex)
+  ggsave(filename = "sankey_fasciotomy.png" ,
+         plot = last_plot(), 
+         width = 8,
+         height = 4,
+         dpi = 600, 
+         path = paste0(getwd(),"/images/"))
 ```
 
 
