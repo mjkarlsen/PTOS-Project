@@ -1,0 +1,615 @@
+---
+title: "Predicting Compartment Syndrome"
+subtitle: "In Pediatric Patients After Forearm Fracture Treatment"
+author: "Matthew Carlson"
+date: "June 7, 2020"
+output:
+  ioslides_presentation:
+    widescreen: yes
+
+---
+
+# <font size="20"> Overview of Compartment Syndrome </font>
+
+## What is Compartment Syndrome?
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/hDHyrhbwq-M?controls=0&amp;start=1&end=28;" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+
+
+## Why does Compartment Syndrome occur?
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/hDHyrhbwq-M?controls=0&amp;start=28&end=78" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+
+
+## How is Compartment Syndrome treated?
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/hDHyrhbwq-M?controls=0&amp;start=79&end=217" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+
+
+
+## Review of Compartment Syndrome & Fasciotomy
+
+<div class="centered">
+![](images/process_flow.png){width=1000px}
+</div>
+
+<!-- <div style="float: right; width: 60%;"> -->
+<!-- ![](images/CS_1.png){width=425px} -->
+<!-- </div> -->
+
+<div style="font-size: 22px">
+In this study, we will use <b>Fasciotomy</b> as the indicator for <b>Compartment Syndrome</b>. 
+</div>
+
+<div style="font-size: 20px">
+- We did this for the following reasons:
+  - Compartment Syndrome is a diagnosis that is subject to human error
+    - The PTOS results are sparse in terms of date, time, and accuracy of diagnosis
+  - Fasciotomy is a procedure that takes place because of Compartment Syndrome
+    - This is a surgical procedure and it is well documented in the PTOS data
+
+</div>
+
+# <font size="20"> Overview of Forearm Fractures </font>
+
+## Four Types of Forearm Fracture Treatments
+
+1. <b>Open Reduction with Internal Fixation</b>
+    + Most common and preferred method for forearm fracture treatment
+2. <b>Closed Reduction without Internal Fixation</b>
+    + Involves manually setting the bone back into place and use of hard cast for stability
+3. <b>Closed Reduction with Internal Fixation</b>
+    + Not a surgical procedure, minor incision in forearm using pins for stability
+4. <b>Open Reduction without Internal Fixation</b>
+    + Surgical procedure, only performed if there is no need for internal fixator
+
+
+
+## Review of Open Reduction Forearm Fractures
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/T6qgyXuvCBc?controls=0&amp;start=9&end=133" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+
+## Review of Closed Reduction Forearm Fractures
+
+<iframe width="400" height="225" src="https://www.youtube.com/embed/cy6f7he2e4w?controls=0&amp;start=6&end=189" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+
+
+## Review of the Four Forearm Fracture Treatments
+<center>
+![](images/forearm_fractures.png){width=950px, height=275px}
+</center>
+
+<br>
+
+<div style="float: left; width: 50%; font-size: 18px">
+
+- These <b>are</b> surgical procedures
+- More traumatic fractures requiring invasive techniques
+- Use of plates, screws, and external cast to secure fracture site
+- Patients are <b>sedated</b> using anesthesia
+
+</div>
+
+<div style="float: right; width: 50%; font-size: 18px">
+
+- These are <b>not</b> surgical procedures
+- Technique performed by <b>manipulation</b> for less traumatic fractures
+- Use of pins and cast to hold bones in place for healing
+- Painful technique for patient and performed with or without general anesthetic 
+
+</div>
+
+# <font size="20"> Pennsylvania Trauma Outcome System </font>
+
+## What is Pennsylvania Trauma Outcome System? 
+
+<center>
+![](images/ptos.png){width=250px}
+</center>
+
+<br>
+
+<div style="font-size: 18px">
+This is the primary data source used for our analysis of Compartment Syndrome in Pediatrics Patients. 
+
+- Approximately 530k anonymized patient records and 1,400 columns of descriptive information regarding each procedure 
+- Medical results occurring between 2010 - 2015
+- Patient demographics, diagnosis, prehospital procedures, surgical procedures, and outcomes
+- Uses International Statistical Classification of Diseases and Related Health Problems (ICD) medical coding to classify causes of injury, examination results, processes, and treatments. 
+
+<br>
+
+<em>Pennsylvania Trauma Outcome System will be referred to as <b>PTOS</b> going forward. </em>
+
+</div>
+
+# <font size="20"> Objective of Compartment Syndrome Analysis </font>
+
+## Objective of Analysis
+Identify the likelihood of <em> compartment syndrome </em> in pediatric patients who suffered from <em> forearm fractures </em>.
+
+<br>
+
+![](images/objective.png){width=1000px}
+
+# Data Preparation
+
+## Data Preparation
+
+<!-- Package Stickers  -->
+
+<div style="position:absolute; top: 30px; right: 30px">
+
+<img src="images/logo.png" width="75px">
+
+</div>
+
+<div style="position:absolute; top: 30px; right: 125px">
+
+<img src="images/r_tidytable_logo.png" width="75px" >
+
+</div>
+
+
+<!-- Package Stickers  -->
+
+- Developed a custom R package, called <b> traumaR </b> to translate all medical codes into human friendly terms
+  - Wrote over 50 functions to automate this work and make it repeatable
+- PTOS Data consists of 530k anonymized patient records and 1,400 columns
+  - Columns mostly consisting of medical codes which required translation
+  - Necessary to normalize the data into structured data frame
+- The final results create two main data frames joined together by patient_id
+  - Patient Information
+  - Medical Procedures
+  
+[traumaR](https://github.com/mjkarlsen/traumaR)
+
+# Exploratory Data Analysis
+
+## EDA: Patient 
+
+<!-- Package Stickers  -->
+
+<div style="position:absolute; top: 30px; right: 125px">
+
+<img src="images/r_dplyr_logo.png" width="75px" >
+
+</div>
+
+<div style="position:absolute; top: 30px; right: 30px">
+
+<img src="images/r_ggplot_logo.png" width="75px" >
+
+</div>
+
+
+
+<!-- Top Left -->
+
+<div style="position:absolute; top: 130px; left: 30px">
+
+<img src="images/ggplot_sex.png" width="500px" >
+
+</div>
+
+<!-- Bottom Left -->
+
+<div style="position:absolute; top: 400px; left: 30px">
+
+<img src="images/ggplot_payor_class_primary.png" width="500px" >
+
+</div>
+
+<!-- Top Right -->
+
+<div style="position:absolute; top: 130px; right: 30px">
+
+<img src="images/ggplot_race.png" width="500px" >
+
+</div>
+
+<!-- Bottom Right -->
+
+<div style="position:absolute; top: 400px; right: 30px">
+
+<img src="images/ggplot_place_of_injury.png" width="500px" >
+
+</div>
+
+
+## EDA: Forearm Fractures
+
+<!-- Package Stickers  -->
+
+<div style="position:absolute; top: 30px; right: 125px">
+
+<img src="images/r_dplyr_logo.png" width="75px" >
+
+</div>
+
+<div style="position:absolute; top: 30px; right: 30px">
+
+<img src="images/r_ggplot_logo.png" width="75px" >
+
+</div>
+
+
+<!-- Top Left -->
+
+<div style="position:absolute; top: 130px; left: 30px">
+
+<img src="images/ggplot_forearm_fx_desc.png" width="500px" >
+
+</div>
+
+<!-- Bottom Left -->
+
+<div style="position:absolute; top: 400px; left: 30px">
+
+<img src="images/ggplot_injury_desc.png" width="500px" >
+
+</div>
+
+<!-- Top Right -->
+
+<div style="position:absolute; top: 130px; right: 30px">
+
+<img src="images/ggplot_forearm_fx_loc.png" width="500px" >
+
+</div>
+
+<!-- Bottom Right -->
+
+
+<div style="position:absolute; top: 400px; right: 30px">
+
+<img src="images/ggplot_fall_height.png" width="500px" >
+
+</div>
+
+
+## EDA: Fasciotomy
+
+<!-- Package Stickers  -->
+
+<div style="position:absolute; top: 30px; right: 125px">
+
+<img src="images/r_dplyr_logo.png" width="75px" >
+
+</div>
+
+<div style="position:absolute; top: 30px; right: 30px">
+
+<img src="images/r_ggplot_logo.png" width="75px" >
+
+</div>
+
+
+<!-- Top Left -->
+
+<div style="position:absolute; top: 130px; left: 30px">
+
+<img src="images/ggplot_fltr_fasciotomy.png" width="500px" >
+
+</div>
+
+<!-- Bottom Left -->
+
+<div style="position:absolute; top: 400px; left: 30px">
+
+<img src="images/ggplot_fltr_complication.png" width="500px" >
+
+</div> 
+
+<!-- Top Right -->
+
+<div style="position:absolute; top: 130px; right: 30px">
+
+<img src="images/ggplot_fasciotomy_loc.png" width="500px" >
+
+</div>
+
+<!-- Bottom Right -->
+
+
+<div style="position:absolute; top: 400px; right: 30px">
+
+<img src="images/ggplot_discharge_status.png" width="500px" >
+
+</div>
+
+
+## EDA: Fasciotomy Results
+
+<!-- Package Stickers  -->
+
+<div style="position:absolute; top: 30px; right: 30px">
+
+<img src="images/r_gt_logo.png" width="75px" >
+
+</div>
+
+
+<center>
+![](images/gt_graph_1.png){width=1000px}
+</center>
+<div style="font-size: 18px">
+
+<em> The Open Reduction with Internal Fixation is the most common technique across the medical field </em>
+
+## EDA: Fasciotomy Results 
+
+<!-- Package Stickers  -->
+
+<div style="position:absolute; top: 30px; right: 30px">
+
+<img src="images/r_gt_logo.png" width="75px" >
+
+</div>
+
+<div style="float: left; width: 65%;"> 
+![](images/gt_graph_2.png){width=650px}
+</div>
+
+<br>
+<br>
+
+<div style="float: right; width: 30%; font-size: 16px"> 
+- Pediatric patients tend to be treated with Closed Reduction and casting
+  - Most of the injuries result from falling on the playground or at home
+  - These fractures are usually less traumatic and do not require invasive techniques 
+
+
+
+</div>
+
+## Association Analysis of Medical Procedures
+
+<div style="position:absolute; top: 100px; left: 60px">
+
+<img src="images/association_analysis.png" width="900px" >
+
+
+<div style="float: left; width: 100%; font-size: 14px"> 
+- The red lines represent common paths in the series of procedures that led to a fasciotomy. 
+- Removed CAT scans (87.03, 87.41, 87.71, 88.01, 88.38), and suture code (83.65) procedures as they made up a majority of the relationships. 
+  - The number of CAT scans were related to the severity of the injury and suturing is just part of the everyday surgery.
+</div>
+
+# Model Development
+
+## Predicting Fasciotomy
+
+<center>
+![](images/model_building.png){width=900px}
+</center>
+
+## Model Pre-Processing
+<center>
+![](images/class_imbalance.png){width=750px}
+</center>
+
+
+<div style="font-size: 18px">
+- Up-sampled the minority class in training data
+  - Fasciotomy == TRUE
+- Use F-Measure as measure of model accuracy
+  - F-Measure combines precision and recall into a single score
+  - Highly recommended for imbalanced classifications 
+</div>
+
+## Feature Engineering
+
+<!-- Package Stickers  -->
+
+<div style="position:absolute; top: 30px; right: 20px">
+
+<img src="images/r_recipes_logo.png" width="105px" >
+
+</div>
+
+<!-- Package Stickers  -->
+
+- <b>Step Other </b>
+  - Groups categorical information into ‘other’ category whose individual levels do not exceed preset threshold. 
+- <b>Step Dummy </b>
+  - Converts character or factors into dummy variables
+- <b>Step Zero Variance </b>
+  - Removes variables that contain only a single value
+    - This is a precautionary step to ensure that Step Other captured all low occurrence into ‘Other’
+- <b>Step Omit NA </b>
+  - Remove any observations with missing values
+  - Some models cannot handle missing values
+
+## Models Deployed
+
+<!-- Package Stickers  -->
+
+<div style="position:absolute; top: 30px; right: 30px">
+
+<img src="images/r_parsnip_logo.png" width="90px" >
+
+</div>
+
+<div style="position:absolute; top: 30px; right: 140px">
+
+<img src="images/r_tidymodels_logo.png" width="90px" >
+
+</div>
+
+<br>
+
+<center>
+![](images/model_specs.png){width=1000px}
+
+</center>
+<!-- Package Stickers  -->
+
+## Model Results: In-Sample Accuracy
+
+<!-- Package Stickers  -->
+
+<div style="position:absolute; top: 30px; right: 30px">
+
+<img src="images/r_yardstick_logo.png" width="90px" >
+
+</div>
+
+<!-- Package Stickers  -->
+
+<center>
+![](images/gt_train_graph.png){width=750px}
+
+</center>
+
+## Model Results: Out-of-Sample Accuracy
+
+<!-- Package Stickers  -->
+
+<div style="position:absolute; top: 30px; right: 30px">
+
+<img src="images/r_yardstick_logo.png" width="90px" >
+
+</div>
+
+<!-- Package Stickers  -->
+
+<center>
+![](images/gt_test_graph.png){width=750px}
+</center>
+
+
+## RandomForest Variable Importance
+
+<!-- Package Stickers  -->
+
+<div style="position:absolute; top: 30px; right: 30px">
+
+<img src="images/r_vip_logo.png" width="100px" >
+
+</div>
+
+<!-- Package Stickers  -->
+
+<div style="float: left; width: 60%"> 
+![](images/rf_vip.png){width=600px, height=500px}
+</div>
+
+<div style="float: right; width: 35%; font-size: 16px"> 
+<br>
+
+<b> Variable Importance </b>
+
+- Specific Types of Injuries
+  - Fall from Stairs, Motor Vehicles, Motorcyclist, Firearm Explosives
+- Location of Injury
+  - Home, Street/Highway
+- Patient Demographics
+  - Male, White, and Age 22
+- Medical Procedure
+  - Operations on Skin and Subcutaneous Tissue
+
+
+</div>
+
+
+## ROC Curve
+
+<div style="position:absolute; top: 120px; left: 10px">
+<p style="text-align:center;">Train Data</p>
+<img src="images/train_roc.png" width="600px" >
+</div>
+
+<div style="position:absolute; top: 120px; right: 20px">
+<p style="text-align:center;">Test Data</p>
+<img src="images/test_roc.png" width="600px" >
+</div>
+
+
+## Area Under Curve Scores
+
+<center>
+<img src="images/auc_results.png" width="800px" >
+</center>
+
+# Visualization and Application
+
+## Shiny Dashboard: Web Version
+
+<!-- Package Stickers  -->
+
+<div style="position:absolute; top: 30px; right: 30px">
+
+<img src="images/r_shiny_logo.png" width="90px" >
+
+</div>
+
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/yDhTCz9Dr1I" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+
+
+## Shiny Dashboard: Phone Application
+
+
+<!-- Package Stickers  -->
+
+<div style="position:absolute; top: 30px; right: 30px">
+
+<img src="images/r_shiny_logo.png" width="90px" >
+
+</div>
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/bnNH4cMvgas" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+
+# Review of Deliverables & Output
+
+## Review of Deliverables & Output
+
+<div style="font-size: 18px"> 
+- Created a model that can predict the likelihood of a patient developing compartment syndrome based on patient demographics and medical history. 
+  - Overall, the results showed that severity of injury and cause of injury were the leading predictors of compartment syndrome. 
+  - There was little information presented to confirmed that the order of medical procedures had any part of increasing compartment syndrome. 
+- Developed a shiny application to assess likelihood of compartment syndrome with user-friendly interactive interface.
+- Built a custom R Package, <b>traumaR</b>, and published it to GitHub and made it publicly accessible. 
+  - The PTOS data provides significant insights for the medical field; however its initial data structure invites challenges for individuals lacking data manipulation expertise. 
+- Contributed to another R Package, <b>tidytable</b>, during the project which is published on CRAN.
+</div>
+
+<!-- Left to Right -->
+
+<div style="position:absolute; bottom: 35px; left: 60px">
+
+<img src="images/sankey_fasciotomy.png" width="350px" >
+
+</div>
+
+
+
+<div style="position:absolute; bottom: 30px; left: 435px">
+
+<img src="images/cs_shiny.png" width="350px" >
+
+</div>
+
+
+<div style="position:absolute; bottom: 5px; right: 110px">
+
+<img src="images/r_tidytable_logo.png" width="100px">
+
+</div>
+
+
+<div style="position:absolute; bottom: 100px; right: 160px">
+
+<img src="images/logo.png" width="100px" >
+
+</div>
+
+
+# Thank you!
+
+<div style="position:absolute; bottom: 80px; left: 100px; font-size: 16px">
+<h6> This presentation was created in R using RMarkdown and ioSlides, [Compartment Syndrome Project](https://github.com/mjkarlsen/PTOS-Project). </h6>
+</div>
+
+
