@@ -79,7 +79,7 @@ I created an R Package, [traumaR](https://github.com/mjkarlsen/traumaR), and hos
 The PTOS raw data is structured so that each patient's information is found on the same row. For example, if a patient has five surgical procedures, those results would be shown across five different columns. This data structure introduced many challenges for identifying patterns in surgical sequencing. Here is a sample of the raw data.
 
 ```{r ptos_example, paged.print=FALSE}
-ptos_df %>% as.tibble() %>% head(10) 
+test <- ptos_df %>% as.tibble() %>% head(10) 
 ```
 
 It was necessary to transpose this information using [tidytable](https://github.com/markfairbanks/tidytable) which handles large data sets. I decided to transpose after identifying which columns had the most relevance.  I transposed the surgical events listed below using their patient id, date, time, location, surgical code, surgical code description.
