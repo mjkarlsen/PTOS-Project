@@ -1,18 +1,19 @@
 ---
-title: "Compartment Syndrome"
+title: "Predicting Compartment Syndrome"
 subtitle: "In Pediatric Patients After Forearm Fracture Treatment"
-author: Matt Carlson
-date: May 24, 2020
-output: 
+author: "Matthew Carlson"
+date: "June 7, 2020"
+output:
   ioslides_presentation:
-    widescreen: true
+    widescreen: yes
+
 ---
 
 # <font size="20"> Overview of Compartment Syndrome </font>
 
 ## What is Compartment Syndrome?
 
-<iframe width="560" height="315" src="https://www.youtube.com/embed/hDHyrhbwq-M?controls=0&amp;start=0&end=28;" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+<iframe width="560" height="315" src="https://www.youtube.com/embed/hDHyrhbwq-M?controls=0&amp;start=1&end=28;" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
 
 
 ## Why does Compartment Syndrome occur?
@@ -49,7 +50,7 @@ In this study, we will use <b>Fasciotomy</b> as the indicator for <b>Compartment
 
 </div>
 
-# <font size="20"> Overview of Forearm Factures </font>
+# <font size="20"> Overview of Forearm Fractures </font>
 
 ## Four Types of Forearm Fracture Treatments
 
@@ -375,7 +376,7 @@ Identify the likelihood of <em> compartment syndrome </em> in pediatric patients
   - The number of CAT scans were related to the severity of the injury and suturing is just part of the everyday surgery.
 </div>
 
-# Modeling
+# Model Development
 
 ## Predicting Fasciotomy
 
@@ -564,18 +565,19 @@ Identify the likelihood of <em> compartment syndrome </em> in pediatric patients
 
 ## Review of Deliverables & Output
 
-<h1>Review of Objectives</h1>
-
-<div style="font-size: 22px"> 
+<div style="font-size: 18px"> 
 - Created a model that can predict the likelihood of a patient developing compartment syndrome based on patient demographics and medical history. 
+  - Overall, the results showed that severity of injury and cause of injury were the leading predictors of compartment syndrome. 
+  - There was little information presented to confirmed that the order of medical procedures had any part of increasing compartment syndrome. 
 - Developed a shiny application to assess likelihood of compartment syndrome with user-friendly interactive interface.
-- Built a customer R Package, <b>traumaR</b>, and published it to GitHub and made it publicly accessible. 
+- Built a custom R Package, <b>traumaR</b>, and published it to GitHub and made it publicly accessible. 
+  - The PTOS data provides significant insights for the medical field; however its initial data structure invites challenges for individuals lacking data manipulation expertise. 
 - Contributed to another R Package, <b>tidytable</b>, during the project which is published on CRAN.
 </div>
 
 <!-- Left to Right -->
 
-<div style="position:absolute; bottom: 55px; left: 60px">
+<div style="position:absolute; bottom: 35px; left: 60px">
 
 <img src="images/sankey_fasciotomy.png" width="350px" >
 
@@ -583,33 +585,31 @@ Identify the likelihood of <em> compartment syndrome </em> in pediatric patients
 
 
 
-<div style="position:absolute; bottom: 60px; left: 435px">
+<div style="position:absolute; bottom: 30px; left: 435px">
 
 <img src="images/cs_shiny.png" width="350px" >
 
 </div>
 
 
-<div style="position:absolute; bottom: 130px; right: 160px">
+<div style="position:absolute; bottom: 5px; right: 110px">
 
-<img src="images/r_tidytable_logo.png" width="100px" >
-
-</div>
-
-
-<div style="position:absolute; bottom: 35px; right: 110px">
-
-<img src="images/logo.png" width="100px">
+<img src="images/r_tidytable_logo.png" width="100px">
 
 </div>
 
 
-## Reflection on Project
+<div style="position:absolute; bottom: 100px; right: 160px">
 
-<h1>Reflection</h1>
-<div style="font-size: 20px"> 
-- 
-- Overall, the results showed that severity of injury and cause of injury were the leading predictors of compartment syndrome. 
-- There was little information presented to confirmed that the order of medical procedures had any part of increasing compartment syndrome. 
-- The PTOS data provides significant insights for the medical field; however its initial data structure invites challenges for individuals lacking data manipulation expertise.  
+<img src="images/logo.png" width="100px" >
+
 </div>
+
+
+# Thank you!
+
+<div style="position:absolute; bottom: 80px; left: 100px; font-size: 16px">
+<h6> This presentation was created in R using RMarkdown and ioSlides, [Compartment Syndrome Project](https://github.com/mjkarlsen/PTOS-Project). </h6>
+</div>
+
+

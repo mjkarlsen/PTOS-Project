@@ -1,0 +1,646 @@
+% Options for packages loaded elsewhere
+\PassOptionsToPackage{unicode}{hyperref}
+\PassOptionsToPackage{hyphens}{url}
+%
+\documentclass[
+  ignorenonframetext,
+]{beamer}
+\usepackage{pgfpages}
+\setbeamertemplate{caption}[numbered]
+\setbeamertemplate{caption label separator}{: }
+\setbeamercolor{caption name}{fg=normal text.fg}
+\beamertemplatenavigationsymbolsempty
+% Prevent slide breaks in the middle of a paragraph
+\widowpenalties 1 10000
+\raggedbottom
+\setbeamertemplate{part page}{
+  \centering
+  \begin{beamercolorbox}[sep=16pt,center]{part title}
+    \usebeamerfont{part title}\insertpart\par
+  \end{beamercolorbox}
+}
+\setbeamertemplate{section page}{
+  \centering
+  \begin{beamercolorbox}[sep=12pt,center]{part title}
+    \usebeamerfont{section title}\insertsection\par
+  \end{beamercolorbox}
+}
+\setbeamertemplate{subsection page}{
+  \centering
+  \begin{beamercolorbox}[sep=8pt,center]{part title}
+    \usebeamerfont{subsection title}\insertsubsection\par
+  \end{beamercolorbox}
+}
+\AtBeginPart{
+  \frame{\partpage}
+}
+\AtBeginSection{
+  \ifbibliography
+  \else
+    \frame{\sectionpage}
+  \fi
+}
+\AtBeginSubsection{
+  \frame{\subsectionpage}
+}
+\usepackage{lmodern}
+\usepackage{amssymb,amsmath}
+\usepackage{ifxetex,ifluatex}
+\ifnum 0\ifxetex 1\fi\ifluatex 1\fi=0 % if pdftex
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{textcomp} % provide euro and other symbols
+\else % if luatex or xetex
+  \usepackage{unicode-math}
+  \defaultfontfeatures{Scale=MatchLowercase}
+  \defaultfontfeatures[\rmfamily]{Ligatures=TeX,Scale=1}
+\fi
+% Use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\IfFileExists{microtype.sty}{% use microtype if available
+  \usepackage[]{microtype}
+  \UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\makeatletter
+\@ifundefined{KOMAClassName}{% if non-KOMA class
+  \IfFileExists{parskip.sty}{%
+    \usepackage{parskip}
+  }{% else
+    \setlength{\parindent}{0pt}
+    \setlength{\parskip}{6pt plus 2pt minus 1pt}}
+}{% if KOMA class
+  \KOMAoptions{parskip=half}}
+\makeatother
+\usepackage{xcolor}
+\IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
+\IfFileExists{bookmark.sty}{\usepackage{bookmark}}{\usepackage{hyperref}}
+\hypersetup{
+  pdftitle={Compartment Syndrome},
+  pdfauthor={Matt Carlson},
+  hidelinks,
+  pdfcreator={LaTeX via pandoc}}
+\urlstyle{same} % disable monospaced font for URLs
+\newif\ifbibliography
+\usepackage{graphicx,grffile}
+\makeatletter
+\def\maxwidth{\ifdim\Gin@nat@width>\linewidth\linewidth\else\Gin@nat@width\fi}
+\def\maxheight{\ifdim\Gin@nat@height>\textheight\textheight\else\Gin@nat@height\fi}
+\makeatother
+% Scale images if necessary, so that they will not overflow the page
+% margins by default, and it is still possible to overwrite the defaults
+% using explicit options in \includegraphics[width, height, ...]{}
+\setkeys{Gin}{width=\maxwidth,height=\maxheight,keepaspectratio}
+% Set default figure placement to htbp
+\makeatletter
+\def\fps@figure{htbp}
+\makeatother
+\setlength{\emergencystretch}{3em} % prevent overfull lines
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\setcounter{secnumdepth}{-\maxdimen} % remove section numbering
+
+\title{Compartment Syndrome}
+\subtitle{In Pediatric Patients After Forearm Fracture Treatment}
+\author{Matt Carlson}
+\date{June 7, 2020}
+
+\begin{document}
+\frame{\titlepage}
+
+\begin{frame}{ Overview of Compartment Syndrome }
+\protect\hypertarget{overview-of-compartment-syndrome}{}
+
+\begin{block}{What is Compartment Syndrome?}
+
+\end{block}
+
+\begin{block}{Why does Compartment Syndrome occur?}
+
+\end{block}
+
+\begin{block}{How is Compartment Syndrome treated?}
+
+\end{block}
+
+\begin{block}{Review of Compartment Syndrome \& Fasciotomy}
+
+\includegraphics[width=10.41667in,height=\textheight]{images/process_flow.png}
+
+In this study, we will use Fasciotomy as the indicator for Compartment
+Syndrome.
+
+\begin{itemize}
+\tightlist
+\item
+  We did this for the following reasons:
+
+  \begin{itemize}
+  \tightlist
+  \item
+    Compartment Syndrome is a diagnosis that is subject to human error
+
+    \begin{itemize}
+    \tightlist
+    \item
+      The PTOS results are sparse in terms of date, time, and accuracy
+      of diagnosis
+    \end{itemize}
+  \item
+    Fasciotomy is a procedure that takes place because of Compartment
+    Syndrome
+
+    \begin{itemize}
+    \tightlist
+    \item
+      This is a surgical procedure and it is well documented in the PTOS
+      data
+    \end{itemize}
+  \end{itemize}
+\end{itemize}
+
+\end{block}
+
+\end{frame}
+
+\begin{frame}{ Overview of Forearm Factures }
+\protect\hypertarget{overview-of-forearm-factures}{}
+
+\begin{block}{Four Types of Forearm Fracture Treatments}
+
+\begin{enumerate}
+\tightlist
+\item
+  Open Reduction with Internal Fixation
+
+  \begin{itemize}
+  \tightlist
+  \item
+    Most common and preferred method for forearm fracture treatment
+  \end{itemize}
+\item
+  Closed Reduction without Internal Fixation
+
+  \begin{itemize}
+  \tightlist
+  \item
+    Involves manually setting the bone back into place and use of hard
+    cast for stability
+  \end{itemize}
+\item
+  Closed Reduction with Internal Fixation
+
+  \begin{itemize}
+  \tightlist
+  \item
+    Not a surgical procedure, minor incision in forearm using pins for
+    stability
+  \end{itemize}
+\item
+  Open Reduction without Internal Fixation
+
+  \begin{itemize}
+  \tightlist
+  \item
+    Surgical procedure, only performed if there is no need for internal
+    fixator
+  \end{itemize}
+\end{enumerate}
+
+\end{block}
+
+\begin{block}{Review of Open Reduction Forearm Fractures}
+
+\end{block}
+
+\begin{block}{Review of Closed Reduction Forearm Fractures}
+
+\end{block}
+
+\begin{block}{Review of the Four Forearm Fracture Treatments}
+
+\includegraphics[width=\textwidth,height=2.86458in]{images/forearm_fractures.png}
+
+\begin{itemize}
+\tightlist
+\item
+  These are surgical procedures
+\item
+  More traumatic fractures requiring invasive techniques
+\item
+  Use of plates, screws, and external cast to secure fracture site
+\item
+  Patients are sedated using anesthesia
+\end{itemize}
+
+\begin{itemize}
+\tightlist
+\item
+  These are not surgical procedures
+\item
+  Technique performed by manipulation for less traumatic fractures
+\item
+  Use of pins and cast to hold bones in place for healing
+\item
+  Painful technique for patient and performed with or without general
+  anesthetic
+\end{itemize}
+
+\end{block}
+
+\end{frame}
+
+\begin{frame}{ Pennsylvania Trauma Outcome System }
+\protect\hypertarget{pennsylvania-trauma-outcome-system}{}
+
+\begin{block}{What is Pennsylvania Trauma Outcome System?}
+
+\includegraphics[width=2.60417in,height=\textheight]{images/ptos.png}
+
+This is the primary data source used for our analysis of Compartment
+Syndrome in Pediatrics Patients.
+
+\begin{itemize}
+\tightlist
+\item
+  Approximately 530k anonymized patient records and 1,400 columns of
+  descriptive information regarding each procedure
+\item
+  Medical results occurring between 2010 - 2015
+\item
+  Patient demographics, diagnosis, prehospital procedures, surgical
+  procedures, and outcomes
+\item
+  Uses International Statistical Classification of Diseases and Related
+  Health Problems (ICD) medical coding to classify causes of injury,
+  examination results, processes, and treatments.
+\end{itemize}
+
+Pennsylvania Trauma Outcome System will be referred to as PTOS going
+forward.
+
+\end{block}
+
+\end{frame}
+
+\begin{frame}{ Objective of Compartment Syndrome Analysis }
+\protect\hypertarget{objective-of-compartment-syndrome-analysis}{}
+
+\begin{block}{Objective of Analysis}
+
+Identify the likelihood of compartment syndrome in pediatric patients
+who suffered from forearm fractures .
+
+\includegraphics[width=10.41667in,height=\textheight]{images/objective.png}
+
+\end{block}
+
+\end{frame}
+
+\begin{frame}{Data Preparation}
+\protect\hypertarget{data-preparation}{}
+
+\begin{block}{Data Preparation}
+
+\begin{itemize}
+\tightlist
+\item
+  Developed a custom R package, called traumaR to translate all medical
+  codes into human friendly terms
+
+  \begin{itemize}
+  \tightlist
+  \item
+    Wrote over 50 functions to automate this work and make it repeatable
+  \end{itemize}
+\item
+  PTOS Data consists of 530k anonymized patient records and 1,400
+  columns
+
+  \begin{itemize}
+  \tightlist
+  \item
+    Columns mostly consisting of medical codes which required
+    translation
+  \item
+    Necessary to normalize the data into structured data frame
+  \end{itemize}
+\item
+  The final results create two main data frames joined together by
+  patient\_id
+
+  \begin{itemize}
+  \tightlist
+  \item
+    Patient Information
+  \item
+    Medical Procedures
+  \end{itemize}
+\end{itemize}
+
+\href{https://github.com/mjkarlsen/traumaR}{traumaR}
+
+\end{block}
+
+\end{frame}
+
+\begin{frame}{Exploratory Data Analysis}
+\protect\hypertarget{exploratory-data-analysis}{}
+
+\begin{block}{EDA: Patient}
+
+\end{block}
+
+\begin{block}{EDA: Forearm Fractures}
+
+\end{block}
+
+\begin{block}{EDA: Fasciotomy}
+
+\end{block}
+
+\begin{block}{EDA: Fasciotomy Results}
+
+\includegraphics[width=10.41667in,height=\textheight]{images/gt_graph_1.png}
+
+The Open Reduction with Internal Fixation is the most common technique
+across the medical field
+
+\end{block}
+
+\begin{block}{EDA: Fasciotomy Results}
+
+\includegraphics[width=6.77083in,height=\textheight]{images/gt_graph_2.png}
+
+\begin{itemize}
+\tightlist
+\item
+  Pediatric patients tend to be treated with Closed Reduction and
+  casting
+
+  \begin{itemize}
+  \tightlist
+  \item
+    Most of the injuries result from falling on the playground or at
+    home
+  \item
+    These fractures are usually less traumatic and do not require
+    invasive techniques
+  \end{itemize}
+\end{itemize}
+
+\end{block}
+
+\begin{block}{Association Analysis of Medical Procedures}
+
+\begin{itemize}
+\tightlist
+\item
+  The red lines represent common paths in the series of procedures that
+  led to a fasciotomy.
+\item
+  Removed CAT scans (87.03, 87.41, 87.71, 88.01, 88.38), and suture code
+  (83.65) procedures as they made up a majority of the relationships.
+
+  \begin{itemize}
+  \tightlist
+  \item
+    The number of CAT scans were related to the severity of the injury
+    and suturing is just part of the everyday surgery.
+  \end{itemize}
+\end{itemize}
+
+\end{block}
+
+\end{frame}
+
+\begin{frame}{Model Development}
+\protect\hypertarget{model-development}{}
+
+\begin{block}{Predicting Fasciotomy}
+
+\includegraphics[width=9.375in,height=\textheight]{images/model_building.png}
+
+\end{block}
+
+\begin{block}{Model Pre-Processing}
+
+\includegraphics[width=7.8125in,height=\textheight]{images/class_imbalance.png}
+
+\begin{itemize}
+\tightlist
+\item
+  Up-sampled the minority class in training data
+
+  \begin{itemize}
+  \tightlist
+  \item
+    Fasciotomy == TRUE
+  \end{itemize}
+\item
+  Use F-Measure as measure of model accuracy
+
+  \begin{itemize}
+  \tightlist
+  \item
+    F-Measure combines precision and recall into a single score
+  \item
+    Highly recommended for imbalanced classifications
+  \end{itemize}
+\end{itemize}
+
+\end{block}
+
+\begin{block}{Feature Engineering}
+
+\begin{itemize}
+\tightlist
+\item
+  Step Other
+
+  \begin{itemize}
+  \tightlist
+  \item
+    Groups categorical information into `other' category whose
+    individual levels do not exceed preset threshold.
+  \end{itemize}
+\item
+  Step Dummy
+
+  \begin{itemize}
+  \tightlist
+  \item
+    Converts character or factors into dummy variables
+  \end{itemize}
+\item
+  Step Zero Variance
+
+  \begin{itemize}
+  \tightlist
+  \item
+    Removes variables that contain only a single value
+
+    \begin{itemize}
+    \tightlist
+    \item
+      This is a precautionary step to ensure that Step Other captured
+      all low occurrence into `Other'
+    \end{itemize}
+  \end{itemize}
+\item
+  Step Omit NA
+
+  \begin{itemize}
+  \tightlist
+  \item
+    Remove any observations with missing values
+  \item
+    Some models cannot handle missing values
+  \end{itemize}
+\end{itemize}
+
+\end{block}
+
+\begin{block}{Models Deployed}
+
+\includegraphics[width=10.41667in,height=\textheight]{images/model_specs.png}
+
+\end{block}
+
+\begin{block}{Model Results: In-Sample Accuracy}
+
+\includegraphics[width=7.8125in,height=\textheight]{images/gt_train_graph.png}
+
+\end{block}
+
+\begin{block}{Model Results: Out-of-Sample Accuracy}
+
+\includegraphics[width=7.8125in,height=\textheight]{images/gt_test_graph.png}
+
+\end{block}
+
+\begin{block}{RandomForest Variable Importance}
+
+\includegraphics[width=\textwidth,height=5.20833in]{images/rf_vip.png}
+
+Variable Importance
+
+\begin{itemize}
+\tightlist
+\item
+  Specific Types of Injuries
+
+  \begin{itemize}
+  \tightlist
+  \item
+    Fall from Stairs, Motor Vehicles, Motorcyclist, Firearm Explosives
+  \end{itemize}
+\item
+  Location of Injury
+
+  \begin{itemize}
+  \tightlist
+  \item
+    Home, Street/Highway
+  \end{itemize}
+\item
+  Patient Demographics
+
+  \begin{itemize}
+  \tightlist
+  \item
+    Male, White, and Age 22
+  \end{itemize}
+\item
+  Medical Procedure
+
+  \begin{itemize}
+  \tightlist
+  \item
+    Operations on Skin and Subcutaneous Tissue
+  \end{itemize}
+\end{itemize}
+
+\end{block}
+
+\begin{block}{ROC Curve}
+
+Train Data
+
+Test Data
+
+\end{block}
+
+\begin{block}{Area Under Curve Scores}
+
+\end{block}
+
+\end{frame}
+
+\begin{frame}{Visualization and Application}
+\protect\hypertarget{visualization-and-application}{}
+
+\begin{block}{Shiny Dashboard: Web Version}
+
+\end{block}
+
+\begin{block}{Shiny Dashboard: Phone Application}
+
+\end{block}
+
+\end{frame}
+
+\begin{frame}{Review of Deliverables \& Output}
+\protect\hypertarget{review-of-deliverables-output}{}
+
+\begin{block}{Review of Deliverables \& Output}
+
+\begin{itemize}
+\tightlist
+\item
+  Created a model that can predict the likelihood of a patient
+  developing compartment syndrome based on patient demographics and
+  medical history.
+
+  \begin{itemize}
+  \tightlist
+  \item
+    Overall, the results showed that severity of injury and cause of
+    injury were the leading predictors of compartment syndrome.
+  \item
+    There was little information presented to confirmed that the order
+    of medical procedures had any part of increasing compartment
+    syndrome.
+  \end{itemize}
+\item
+  Developed a shiny application to assess likelihood of compartment
+  syndrome with user-friendly interactive interface.
+\item
+  Built a customer R Package, traumaR, and published it to GitHub and
+  made it publicly accessible.
+
+  \begin{itemize}
+  \tightlist
+  \item
+    The PTOS data provides significant insights for the medical field;
+    however its initial data structure invites challenges for
+    individuals lacking data manipulation expertise.
+  \end{itemize}
+\item
+  Contributed to another R Package, tidytable, during the project which
+  is published on CRAN.
+\end{itemize}
+
+\end{block}
+
+\end{frame}
+
+\begin{frame}{Thank you!}
+\protect\hypertarget{thank-you}{}
+
+This presentation was created in R using RMarkdown and ioSlides,
+\href{https://github.com/mjkarlsen/PTOS-Project}{Compartment Syndrome
+Project}.
+
+\end{frame}
+
+\end{document}
